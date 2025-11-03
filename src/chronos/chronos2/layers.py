@@ -368,6 +368,7 @@ class GroupSelfAttention(nn.Module):
 
 class ResidualBlock(nn.Module):
     """A generic residual block which can be used for input and output embedding layers"""
+    # FIXME: 这里的模块可以借用用于模型最后的输出 添加残差模块
 
     def __init__(
         self,
