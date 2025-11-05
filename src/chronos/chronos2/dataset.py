@@ -787,9 +787,11 @@ class Chronos2Dataset(IterableDataset):
         if self.mode == DatasetMode.TRAIN:
             # slice a random subsequence from the full series
             slice_idx = np.random.randint(self.min_past, full_length - self.prediction_length + 1)
+            
         elif self.mode == DatasetMode.VALIDATION:
             # slice the last window for validation
             slice_idx = full_length - self.prediction_length
+            
         else:
             # slice the full series for prediction
             slice_idx = full_length
@@ -797,6 +799,7 @@ class Chronos2Dataset(IterableDataset):
         if slice_idx >= self.context_length:
             # slice series, if it is longer than context_length
             task_context = task_past_tensor[:, slice_idx - self.context_length : slice_idx]
+            
         else:
             task_context = task_past_tensor[:, :slice_idx]
 

@@ -70,6 +70,7 @@ def log_on_main(msg: str, logger: logging.Logger, log_level: int = logging.INFO)
 def get_training_job_info() -> Dict:
     """
     Returns info about this training job.
+    # TODO: 这个记录训练信息的功能模块可以学着写一下
     """
     job_info = {}
 

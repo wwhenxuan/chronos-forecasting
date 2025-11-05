@@ -505,6 +505,7 @@ class Chronos2Model(PreTrainedModel):
         loc_scale: tuple[torch.Tensor, torch.Tensor],
         num_output_patches: int,
     ) -> torch.Tensor:
+        """在这里计算致信预测的损失"""
         batch_size = future_target.shape[0]
         output_patch_size = self.chronos_config.output_patch_size
         assert quantile_preds.shape[0] == batch_size and quantile_preds.shape[-1] >= future_target.shape[-1]
@@ -674,6 +675,7 @@ class Chronos2Model(PreTrainedModel):
             # by default, each time series is treated independently, i.e., no mixing across the batch
             group_ids = torch.arange(batch_size, dtype=torch.long, device=self.device)
 
+        # 在这里进行模型的前向传播
         encoder_outputs: Chronos2EncoderOutput = self.encoder(
             attention_mask=attention_mask,
             inputs_embeds=input_embeds,
@@ -685,8 +687,11 @@ class Chronos2Model(PreTrainedModel):
         assert hidden_states.shape == (batch_size, num_context_patches + 1 + num_output_patches, self.model_dim)
 
         # slice the last num_output_patches hidden states to be input into the output_patch_embedding
-        forecast_embeds = hidden_states[:, -num_output_patches:]
+        forecast_embeds = hidden_states[:, -num_output_patches:]  # 获取编码器架构的最后一共patch的输出结果
         quantile_preds: torch.Tensor = self.output_patch_embedding(forecast_embeds)
+        
+        # reshape quantile_preds to (batch, num_output_patches, num_quantiles, output_patch_size)
+        # TODO: 为什么要这样子做reshape？
         quantile_preds = rearrange(
             quantile_preds,
             "b n (q p) -> b q (n p)",
@@ -708,6 +713,7 @@ class Chronos2Model(PreTrainedModel):
             else None
         )
 
+        # FIXME: 注意应该是在这一部分内容中进行置信预测
         # Unscale predictions
         quantile_preds = rearrange(
             quantile_preds,
