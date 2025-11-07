@@ -14,7 +14,9 @@ def left_pad_and_stack_1D(tensors: List[torch.Tensor]) -> torch.Tensor:
     for c in tensors:
         assert isinstance(c, torch.Tensor)
         assert c.ndim == 1
-        padding = torch.full(size=(max_len - len(c),), fill_value=torch.nan, device=c.device)
+        padding = torch.full(
+            size=(max_len - len(c),), fill_value=torch.nan, device=c.device
+        )
         padded.append(torch.concat((padding, c), dim=-1))
     return torch.stack(padded)
 
@@ -46,28 +48,34 @@ def interpolate_quantiles(
         The interpolated quantiles at the query quantile levels. All leading dimensions have the same size
         as `original_values` and the last dimension has size `len(query_quantile_levels)`.
     """
-    assert torch.is_floating_point(original_values), "`original_values` must be a floating point tensor"
+    assert torch.is_floating_point(
+        original_values
+    ), "`original_values` must be a floating point tensor"
     orig_dtype = original_values.dtype
     if isinstance(query_quantile_levels, list):
         query_quantile_levels = torch.tensor(query_quantile_levels, dtype=torch.float32)
     if isinstance(original_quantile_levels, list):
-        original_quantile_levels = torch.tensor(original_quantile_levels, dtype=torch.float32)
+        original_quantile_levels = torch.tensor(
+            original_quantile_levels, dtype=torch.float32
+        )
 
-    assert query_quantile_levels.ndim == 1, "`query_quantile_levels` must be 1-dimensional"
+    assert (
+        query_quantile_levels.ndim == 1
+    ), "`query_quantile_levels` must be 1-dimensional"
     if original_quantile_levels.ndim > 1:
-        assert original_quantile_levels.shape == original_values.shape, (
-            "If `original_quantile_levels` is not 1D, its shape must match `original_values`"
-        )
+        assert (
+            original_quantile_levels.shape == original_values.shape
+        ), "If `original_quantile_levels` is not 1D, its shape must match `original_values`"
     else:
-        assert len(original_quantile_levels) == original_values.shape[-1], (
-            "If `original_quantile_levels` is 1D, its length must match the last dim of `original_values`"
-        )
-    assert query_quantile_levels.min() >= 0.0 and query_quantile_levels.max() <= 1.0, (
-        "`query_quantile_levels` must be between 0 and 1"
-    )
-    assert original_quantile_levels.min() >= 0.0 and original_quantile_levels.max() <= 1.0, (
-        "`original_quantile_levels` must be between 0 and 1"
-    )
+        assert (
+            len(original_quantile_levels) == original_values.shape[-1]
+        ), "If `original_quantile_levels` is 1D, its length must match the last dim of `original_values`"
+    assert (
+        query_quantile_levels.min() >= 0.0 and query_quantile_levels.max() <= 1.0
+    ), "`query_quantile_levels` must be between 0 and 1"
+    assert (
+        original_quantile_levels.min() >= 0.0 and original_quantile_levels.max() <= 1.0
+    ), "`original_quantile_levels` must be between 0 and 1"
     original_quantile_levels = torch.clamp(original_quantile_levels, min=0.0, max=1.0)
 
     device = original_values.device
@@ -84,7 +92,9 @@ def interpolate_quantiles(
     if original_quantile_levels.ndim == 1:
         original_quantile_levels = original_quantile_levels.expand(batch_size, -1)
     else:
-        original_quantile_levels = original_quantile_levels.reshape(-1, num_original_quantiles)
+        original_quantile_levels = original_quantile_levels.reshape(
+            -1, num_original_quantiles
+        )
 
     # Sort original quantile levels and the corresponding values
     sorted_levels, sorted_indices = torch.sort(original_quantile_levels, dim=-1)
@@ -110,7 +120,9 @@ def interpolate_quantiles(
     sorted_values = torch.cat(sorted_values_with_padding, dim=-1)
 
     # Shape goes from (num_queries,) to (batch_size, num_queries).
-    query_levels_expanded = repeat(query_quantile_levels, "q -> b q", b=batch_size).contiguous()
+    query_levels_expanded = repeat(
+        query_quantile_levels, "q -> b q", b=batch_size
+    ).contiguous()
 
     # Find (sorted) index of smallest original quantile level strictly larger than the query quantile level
     upper_indices = torch.searchsorted(sorted_levels, query_levels_expanded, right=True)
@@ -125,7 +137,9 @@ def interpolate_quantiles(
 
     # Perform linear interpolation
     level_diff = upper_levels - lower_levels
-    weight = torch.nan_to_num((query_levels_expanded - lower_levels) / level_diff, nan=0.0)
+    weight = torch.nan_to_num(
+        (query_levels_expanded - lower_levels) / level_diff, nan=0.0
+    )
     interpolated_values = lower_values + weight * (upper_values - lower_values)
 
     final_shape = (*orig_values_shape[:-1], len(query_quantile_levels))
@@ -160,22 +174,24 @@ def weighted_quantile(
         as `samples` and the last dimension has size `len(query_quantile_levels)`.
     """
     # FIXME: this interpolation works reasonably well in practice but may not be the best way to extrapolate
-    assert torch.is_floating_point(samples), "`original_values` must be a floating point tensor"
+    assert torch.is_floating_point(
+        samples
+    ), "`original_values` must be a floating point tensor"
     orig_dtype = samples.dtype
     if isinstance(query_quantile_levels, list):
         query_quantile_levels = torch.tensor(query_quantile_levels, dtype=torch.float32)
     if isinstance(sample_weights, list):
         sample_weights = torch.tensor(sample_weights, dtype=torch.float32)
 
-    assert query_quantile_levels.ndim == 1 and sample_weights.ndim == 1, (
-        "`query_quantile_levels` and `sample_weights` must be 1-dimensional"
-    )
-    assert len(sample_weights) == samples.shape[-1], (
-        "the last dim of `samples` must be equal to the length of `sample_weights`"
-    )
-    assert query_quantile_levels.min() >= 0.0 and query_quantile_levels.max() <= 1.0, (
-        "`query_quantile_levels` must be between 0 and 1"
-    )
+    assert (
+        query_quantile_levels.ndim == 1 and sample_weights.ndim == 1
+    ), "`query_quantile_levels` and `sample_weights` must be 1-dimensional"
+    assert (
+        len(sample_weights) == samples.shape[-1]
+    ), "the last dim of `samples` must be equal to the length of `sample_weights`"
+    assert (
+        query_quantile_levels.min() >= 0.0 and query_quantile_levels.max() <= 1.0
+    ), "`query_quantile_levels` must be between 0 and 1"
     assert sample_weights.min() > 0.0, "`sample_weights` must be > 0"
 
     device = samples.device

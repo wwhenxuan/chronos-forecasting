@@ -62,7 +62,9 @@ def test_pad_and_stack(tensors: list):
         ),
     ],
 )
-def test_interpolate_quantiles(query_quantiles, orig_quantiles, orig_values, expected_values):
+def test_interpolate_quantiles(
+    query_quantiles, orig_quantiles, orig_values, expected_values
+):
     output_values = interpolate_quantiles(query_quantiles, orig_quantiles, orig_values)
     assert output_values.dtype == torch.float32
     assert torch.allclose(output_values, expected_values)

@@ -68,7 +68,9 @@ class Chronos2Trainer(Trainer):
 
         return DataLoader(train_dataset, **dataloader_params)  # type: ignore
 
-    def get_eval_dataloader(self, eval_dataset: str | Dataset | None = None) -> DataLoader:
+    def get_eval_dataloader(
+        self, eval_dataset: str | Dataset | None = None
+    ) -> DataLoader:
         if self.eval_dataset is None:
             raise ValueError("Trainer: evaluation requires an eval_dataset.")
 

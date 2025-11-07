@@ -88,14 +88,20 @@ class Chronos2CoreConfig(PretrainedConfig):
 
         # Attention implementation - default to "sdpa" if not specified
         attn_implementation = attn_implementation or "sdpa"
-        assert attn_implementation in ["eager", "sdpa"], f"attn_implementation {attn_implementation} not supported"
+        assert attn_implementation in [
+            "eager",
+            "sdpa",
+        ], f"attn_implementation {attn_implementation} not supported"
 
         # unused
         kwargs.pop("is_encoder_decoder", None)
         kwargs.pop("eos_token_id", None)
 
         super().__init__(
-            pad_token_id=pad_token_id, is_encoder_decoder=False, attn_implementation=attn_implementation, **kwargs
+            pad_token_id=pad_token_id,
+            is_encoder_decoder=False,
+            attn_implementation=attn_implementation,
+            **kwargs,
         )
 
 

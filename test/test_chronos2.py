@@ -57,22 +57,39 @@ def test_base_chronos2_pipeline_loads_from_hf():
         ),
         # Homogenous univariate list of dicts with target only
         (
-            [{"target": torch.rand(10)}, {"target": torch.rand(110)}, {"target": torch.rand(17)}],
+            [
+                {"target": torch.rand(10)},
+                {"target": torch.rand(110)},
+                {"target": torch.rand(17)},
+            ],
             5,
             [(1, DEFAULT_MODEL_NUM_QUANTILES, 5)] * 3,
         ),
         # Homogenous multivariate list of dicts with target only
         (
-            [{"target": torch.rand(2, 10)}, {"target": torch.rand(2, 110)}, {"target": torch.rand(2, 17)}],
+            [
+                {"target": torch.rand(2, 10)},
+                {"target": torch.rand(2, 110)},
+                {"target": torch.rand(2, 17)},
+            ],
             16,
             [(2, DEFAULT_MODEL_NUM_QUANTILES, 16)] * 3,
         ),
         # Homogenous list of dicts with target and past-only covariates
         (
             [
-                {"target": torch.rand(10), "past_covariates": {"feat_1": torch.rand(10)}},
-                {"target": torch.rand(110), "past_covariates": {"feat_1": torch.rand(110)}},
-                {"target": torch.rand(17), "past_covariates": {"feat_1": torch.rand(17)}},
+                {
+                    "target": torch.rand(10),
+                    "past_covariates": {"feat_1": torch.rand(10)},
+                },
+                {
+                    "target": torch.rand(110),
+                    "past_covariates": {"feat_1": torch.rand(110)},
+                },
+                {
+                    "target": torch.rand(17),
+                    "past_covariates": {"feat_1": torch.rand(17)},
+                },
             ],
             10,
             [(1, DEFAULT_MODEL_NUM_QUANTILES, 10)] * 3,
@@ -82,17 +99,26 @@ def test_base_chronos2_pipeline_loads_from_hf():
             [
                 {
                     "target": torch.rand(10),
-                    "past_covariates": {"feat_1": torch.rand(10), "feat_2": torch.rand(10)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(10),
+                        "feat_2": torch.rand(10),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(99),
-                    "past_covariates": {"feat_1": torch.rand(99), "feat_2": torch.rand(99)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(99),
+                        "feat_2": torch.rand(99),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(17),
-                    "past_covariates": {"feat_1": torch.rand(17), "feat_2": torch.rand(17)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(17),
+                        "feat_2": torch.rand(17),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
             ],
@@ -104,20 +130,30 @@ def test_base_chronos2_pipeline_loads_from_hf():
             [
                 {
                     "target": torch.rand(100),
-                    "past_covariates": {"temperature": torch.rand(100), "precipitation": torch.rand(100)},
+                    "past_covariates": {
+                        "temperature": torch.rand(100),
+                        "precipitation": torch.rand(100),
+                    },
                     "future_covariates": {"temperature": torch.rand(200)},
                 },
-                {"target": torch.rand(2, 150), "past_covariates": {"wind_speed": torch.rand(150)}},
+                {
+                    "target": torch.rand(2, 150),
+                    "past_covariates": {"wind_speed": torch.rand(150)},
+                },
                 {
                     "target": np.random.rand(150),
                     "past_covariates": {
                         "numeric_covariate_1": np.random.rand(150),
                         "numeric_covariate_2": np.random.rand(150),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=150),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=150
+                        ),
                     },
                     "future_covariates": {
                         "numeric_covariate_1": np.random.rand(200),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=200),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=200
+                        ),
                     },
                 },
                 {
@@ -125,11 +161,15 @@ def test_base_chronos2_pipeline_loads_from_hf():
                     "past_covariates": {
                         "numeric_covariate_1": np.random.rand(150),
                         "numeric_covariate_2": np.random.rand(150),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=150),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=150
+                        ),
                     },
                     "future_covariates": {
                         "numeric_covariate_1": np.random.rand(200),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=200),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=200
+                        ),
                     },
                 },
                 {"target": torch.rand(1, 150)},
@@ -145,7 +185,9 @@ def test_base_chronos2_pipeline_loads_from_hf():
         ),
     ],
 )
-def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, prediction_length, expected_output_shapes):
+def test_when_input_is_valid_then_pipeline_can_predict(
+    pipeline, inputs, prediction_length, expected_output_shapes
+):
     outputs = pipeline.predict(inputs, prediction_length=prediction_length)
 
     assert isinstance(outputs, list) and len(outputs) == len(expected_output_shapes)
@@ -157,9 +199,19 @@ def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, predict
     "inputs, prediction_length, quantile_levels, expected_output_shapes",
     [
         # Homogenous univariate task
-        (torch.rand(4, 1, 16), 7, [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], [(1, 7, 9)] * 4),
+        (
+            torch.rand(4, 1, 16),
+            7,
+            [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+            [(1, 7, 9)] * 4,
+        ),
         # Homogenous multivariate task
-        (torch.rand(4, 3, 37), 27, [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8], [(3, 27, 8)] * 4),
+        (
+            torch.rand(4, 3, 37),
+            27,
+            [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8],
+            [(3, 27, 8)] * 4,
+        ),
         # Heterogenous tasks with different history lengths
         (
             [torch.rand(100), torch.rand(2, 150), torch.rand(120)],
@@ -169,14 +221,22 @@ def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, predict
         ),
         # Homogenous univariate list of dicts with target only
         (
-            [{"target": torch.rand(10)}, {"target": torch.rand(110)}, {"target": torch.rand(17)}],
+            [
+                {"target": torch.rand(10)},
+                {"target": torch.rand(110)},
+                {"target": torch.rand(17)},
+            ],
             5,
             [0.1, 0.5, 0.9],
             [(1, 5, 3)] * 3,
         ),
         # Homogenous multivariate list of dicts with target only
         (
-            [{"target": torch.rand(2, 10)}, {"target": torch.rand(2, 110)}, {"target": torch.rand(2, 17)}],
+            [
+                {"target": torch.rand(2, 10)},
+                {"target": torch.rand(2, 110)},
+                {"target": torch.rand(2, 17)},
+            ],
             16,
             [0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99],
             [(2, 16, 11)] * 3,
@@ -184,9 +244,18 @@ def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, predict
         # Homogenous list of dicts with target and past-only covariates
         (
             [
-                {"target": torch.rand(10), "past_covariates": {"feat_1": torch.rand(10)}},
-                {"target": torch.rand(110), "past_covariates": {"feat_1": torch.rand(110)}},
-                {"target": torch.rand(17), "past_covariates": {"feat_1": torch.rand(17)}},
+                {
+                    "target": torch.rand(10),
+                    "past_covariates": {"feat_1": torch.rand(10)},
+                },
+                {
+                    "target": torch.rand(110),
+                    "past_covariates": {"feat_1": torch.rand(110)},
+                },
+                {
+                    "target": torch.rand(17),
+                    "past_covariates": {"feat_1": torch.rand(17)},
+                },
             ],
             10,
             [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
@@ -197,17 +266,26 @@ def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, predict
             [
                 {
                     "target": torch.rand(10),
-                    "past_covariates": {"feat_1": torch.rand(10), "feat_2": torch.rand(10)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(10),
+                        "feat_2": torch.rand(10),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(99),
-                    "past_covariates": {"feat_1": torch.rand(99), "feat_2": torch.rand(99)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(99),
+                        "feat_2": torch.rand(99),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(17),
-                    "past_covariates": {"feat_1": torch.rand(17), "feat_2": torch.rand(17)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(17),
+                        "feat_2": torch.rand(17),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
             ],
@@ -220,20 +298,30 @@ def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, predict
             [
                 {
                     "target": torch.rand(100),
-                    "past_covariates": {"temperature": torch.rand(100), "precipitation": torch.rand(100)},
+                    "past_covariates": {
+                        "temperature": torch.rand(100),
+                        "precipitation": torch.rand(100),
+                    },
                     "future_covariates": {"temperature": torch.rand(200)},
                 },
-                {"target": torch.rand(2, 150), "past_covariates": {"wind_speed": torch.rand(150)}},
+                {
+                    "target": torch.rand(2, 150),
+                    "past_covariates": {"wind_speed": torch.rand(150)},
+                },
                 {
                     "target": np.random.rand(150),
                     "past_covariates": {
                         "numeric_covariate_1": np.random.rand(150),
                         "numeric_covariate_2": np.random.rand(150),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=150),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=150
+                        ),
                     },
                     "future_covariates": {
                         "numeric_covariate_1": np.random.rand(200),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=200),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=200
+                        ),
                     },
                 },
                 {
@@ -241,11 +329,15 @@ def test_when_input_is_valid_then_pipeline_can_predict(pipeline, inputs, predict
                     "past_covariates": {
                         "numeric_covariate_1": np.random.rand(150),
                         "numeric_covariate_2": np.random.rand(150),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=150),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=150
+                        ),
                     },
                     "future_covariates": {
                         "numeric_covariate_1": np.random.rand(200),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=200),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=200
+                        ),
                     },
                 },
                 {"target": torch.rand(1, 150)},
@@ -276,13 +368,31 @@ def test_when_input_is_valid_then_pipeline_can_predict_quantiles(
         (torch.rand(16), "should be 3-d with shape"),
         (torch.rand(4, 3), "should be 3-d with shape"),
         ([torch.rand(1, 2, 100), torch.rand(120)], "the elements should either be 1-d"),
-        ([{"target": torch.rand(10)}, {"target": torch.rand(1, 2, 17), "extra_key": []}], "Found invalid keys"),
-        ([{"target": torch.rand(10)}, {"target": torch.rand(1, 2, 17)}], "`target` should either be 1-d with shape"),
-        ([{"target": torch.rand(10), "past_covariates": torch.rand(10)}], "Found invalid type for `past_covariates`"),
         (
             [
-                {"target": torch.rand(10), "past_covariates": {"feat_1": torch.rand(10)}},
-                {"target": torch.rand(17), "past_covariates": {"feat_1": torch.rand(10)}},
+                {"target": torch.rand(10)},
+                {"target": torch.rand(1, 2, 17), "extra_key": []},
+            ],
+            "Found invalid keys",
+        ),
+        (
+            [{"target": torch.rand(10)}, {"target": torch.rand(1, 2, 17)}],
+            "`target` should either be 1-d with shape",
+        ),
+        (
+            [{"target": torch.rand(10), "past_covariates": torch.rand(10)}],
+            "Found invalid type for `past_covariates`",
+        ),
+        (
+            [
+                {
+                    "target": torch.rand(10),
+                    "past_covariates": {"feat_1": torch.rand(10)},
+                },
+                {
+                    "target": torch.rand(17),
+                    "past_covariates": {"feat_1": torch.rand(10)},
+                },
             ],
             "`past_covariates` must be 1-d with length",
         ),
@@ -301,7 +411,10 @@ def test_when_input_is_valid_then_pipeline_can_predict_quantiles(
                 {
                     "target": torch.rand(10),
                     "past_covariates": {"feat": torch.rand(10)},
-                    "future_covariates": {"feat": torch.rand(10), "extra": torch.rand(10)},
+                    "future_covariates": {
+                        "feat": torch.rand(10),
+                        "extra": torch.rand(10),
+                    },
                 }
             ],
             "Expected keys in `future_covariates`",
@@ -318,14 +431,18 @@ def test_when_input_is_valid_then_pipeline_can_predict_quantiles(
         ),
     ],
 )
-def test_when_input_is_invalid_then_predict_raises_value_error(pipeline, inputs, error_match_string):
+def test_when_input_is_invalid_then_predict_raises_value_error(
+    pipeline, inputs, error_match_string
+):
     with pytest.raises(ValueError, match=error_match_string):
         _ = pipeline.predict(inputs, prediction_length=10)
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.bfloat16])
 @pytest.mark.parametrize("input_dtype", [torch.float32, torch.bfloat16, torch.int64])
-def test_pipeline_predict_can_handle_different_model_and_input_dtypes(dtype: torch.dtype, input_dtype: torch.dtype):
+def test_pipeline_predict_can_handle_different_model_and_input_dtypes(
+    dtype: torch.dtype, input_dtype: torch.dtype
+):
     pipeline = BaseChronosPipeline.from_pretrained(
         Path(__file__).parent / "dummy-chronos2-model", device_map="cpu", dtype=dtype
     )
@@ -337,13 +454,19 @@ def test_pipeline_predict_can_handle_different_model_and_input_dtypes(dtype: tor
 
     quantiles = pipeline.predict(context, prediction_length=7)
     for quantiles_item in quantiles:
-        validate_tensor(quantiles_item, (3, expected_num_quantiles, 7), dtype=torch.float32)
+        validate_tensor(
+            quantiles_item, (3, expected_num_quantiles, 7), dtype=torch.float32
+        )
 
 
 @pytest.mark.parametrize(
     "task_kwargs",
     [
-        {"dataset_path": "autogluon/chronos_datasets", "dataset_config": "monash_m1_yearly", "horizon": 8},
+        {
+            "dataset_path": "autogluon/chronos_datasets",
+            "dataset_config": "monash_m1_yearly",
+            "horizon": 8,
+        },
         {
             "dataset_path": "autogluon/chronos_datasets",
             "dataset_config": "monash_m1_yearly",
@@ -383,15 +506,26 @@ def test_pipeline_can_evaluate_on_dummy_fev_task(pipeline, task_kwargs):
         isinstance(pred, datasets.DatasetDict) for pred in predictions_per_window
     )
 
-    eval_summary = task.evaluation_summary(predictions_per_window, model_name="chronos-2")
+    eval_summary = task.evaluation_summary(
+        predictions_per_window, model_name="chronos-2"
+    )
     assert isinstance(eval_summary["test_error"], float)
 
 
-def create_df(series_ids=["A", "B"], n_points=[10, 10], target_cols=["target"], covariates=None, freq="h"):
+def create_df(
+    series_ids=["A", "B"],
+    n_points=[10, 10],
+    target_cols=["target"],
+    covariates=None,
+    freq="h",
+):
     """Helper to create test context DataFrames."""
     series_dfs = []
     for series_id, length in zip(series_ids, n_points):
-        series_data = {"item_id": series_id, "timestamp": pd.date_range(end="2001-10-01", periods=length, freq=freq)}
+        series_data = {
+            "item_id": series_id,
+            "timestamp": pd.date_range(end="2001-10-01", periods=length, freq=freq),
+        }
         for target_col in target_cols:
             series_data[target_col] = np.random.randn(length)
         if covariates:
@@ -401,11 +535,20 @@ def create_df(series_ids=["A", "B"], n_points=[10, 10], target_cols=["target"], 
     return pd.concat(series_dfs, ignore_index=True)
 
 
-def create_future_df(forecast_start_times: list, series_ids=["A", "B"], n_points=[5, 5], covariates=None, freq="h"):
+def create_future_df(
+    forecast_start_times: list,
+    series_ids=["A", "B"],
+    n_points=[5, 5],
+    covariates=None,
+    freq="h",
+):
     """Helper to create test future DataFrames."""
     series_dfs = []
     for series_id, length, start in zip(series_ids, n_points, forecast_start_times):
-        series_data = {"item_id": series_id, "timestamp": pd.date_range(start=start, periods=length, freq=freq)}
+        series_data = {
+            "item_id": series_id,
+            "timestamp": pd.date_range(start=start, periods=length, freq=freq),
+        }
         if covariates:
             for cov in covariates:
                 series_data[cov] = np.random.randn(length)
@@ -415,7 +558,10 @@ def create_future_df(forecast_start_times: list, series_ids=["A", "B"], n_points
 
 def get_forecast_start_times(df, freq="h"):
     context_end_times = df.groupby("item_id")["timestamp"].max()
-    forecast_start_times = [pd.date_range(end_time, periods=2, freq=freq)[-1] for end_time in context_end_times]
+    forecast_start_times = [
+        pd.date_range(end_time, periods=2, freq=freq)[-1]
+        for end_time in context_end_times
+    ]
 
     return forecast_start_times
 
@@ -436,10 +582,18 @@ def get_forecast_start_times(df, freq="h"):
         # With future covariates
         ({"covariates": ["cov1"]}, {"covariates": ["cov1"], "n_points": [3, 3]}, 6),
         # With past-only and future covariates
-        ({"covariates": ["cov1", "cov2"]}, {"covariates": ["cov1"], "n_points": [3, 3]}, 6),
+        (
+            {"covariates": ["cov1", "cov2"]},
+            {"covariates": ["cov1"], "n_points": [3, 3]},
+            6,
+        ),
         # With past-only and future covariates and different series order
         (
-            {"series_ids": ["B", "C", "A", "Z"], "n_points": [10, 20, 100, 256], "covariates": ["cov1", "cov2"]},
+            {
+                "series_ids": ["B", "C", "A", "Z"],
+                "n_points": [10, 20, 100, 256],
+                "covariates": ["cov1", "cov2"],
+            },
             {
                 "series_ids": ["B", "C", "A", "Z"],
                 "covariates": ["cov1"],
@@ -450,30 +604,46 @@ def get_forecast_start_times(df, freq="h"):
     ],
 )
 @pytest.mark.parametrize("freq", ["s", "min", "30min", "h", "D", "W", "ME", "QE", "YE"])
-def test_predict_df_works_for_valid_inputs(pipeline, context_setup, future_setup, expected_rows, freq):
+def test_predict_df_works_for_valid_inputs(
+    pipeline, context_setup, future_setup, expected_rows, freq
+):
     prediction_length = 3
     df = create_df(**context_setup, freq=freq)
     forecast_start_times = get_forecast_start_times(df, freq)
-    future_df = create_future_df(forecast_start_times, **future_setup, freq=freq) if future_setup else None
+    future_df = (
+        create_future_df(forecast_start_times, **future_setup, freq=freq)
+        if future_setup
+        else None
+    )
 
     series_ids = context_setup.get("series_ids", ["A", "B"])
     target_columns = context_setup.get("target_cols", ["target"])
     n_series = len(series_ids)
     n_targets = len(target_columns)
-    result = pipeline.predict_df(df, future_df=future_df, target=target_columns, prediction_length=prediction_length)
+    result = pipeline.predict_df(
+        df,
+        future_df=future_df,
+        target=target_columns,
+        prediction_length=prediction_length,
+    )
 
     assert len(result) == expected_rows
     assert "item_id" in result.columns and np.all(
-        result["item_id"].to_numpy() == np.array(series_ids).repeat(n_targets * prediction_length)
+        result["item_id"].to_numpy()
+        == np.array(series_ids).repeat(n_targets * prediction_length)
     )
     assert "target_name" in result.columns and np.all(
-        result["target_name"].to_numpy() == np.tile(np.array(target_columns).repeat(prediction_length), n_series)
+        result["target_name"].to_numpy()
+        == np.tile(np.array(target_columns).repeat(prediction_length), n_series)
     )
     assert "timestamp" in result.columns and np.all(
-        result.groupby("item_id")["timestamp"].min().to_numpy() == pd.to_datetime(forecast_start_times).to_numpy()
+        result.groupby("item_id")["timestamp"].min().to_numpy()
+        == pd.to_datetime(forecast_start_times).to_numpy()
     )
     assert "predictions" in result.columns
-    assert all(str(q) in result.columns for q in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    assert all(
+        str(q) in result.columns for q in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    )
 
 
 @pytest.mark.parametrize(
@@ -482,7 +652,10 @@ def test_predict_df_works_for_valid_inputs(pipeline, context_setup, future_setup
         # Missing timestamp column
         ({"item_id": ["A"], "target": [1.0]}, "df does not contain all"),
         # Insufficient data points
-        ({"item_id": ["A"], "timestamp": ["2023-01-01"], "target": [1.0]}, "must have at least 3 data"),
+        (
+            {"item_id": ["A"], "timestamp": ["2023-01-01"], "target": [1.0]},
+            "must have at least 3 data",
+        ),
     ],
 )
 def test_predict_df_df_validation_errors(pipeline, context_data, error_match):
@@ -499,12 +672,22 @@ def test_predict_df_df_validation_errors(pipeline, context_data, error_match):
         ({"item_id": ["A"], "cov1": [1.0]}, "future_df does not contain all"),
         # target in future_df
         (
-            {"item_id": ["A"], "timestamp": ["2023-01-01"], "cov1": [1.0], "target": [1.0]},
+            {
+                "item_id": ["A"],
+                "timestamp": ["2023-01-01"],
+                "cov1": [1.0],
+                "target": [1.0],
+            },
             "future_df cannot contain target",
         ),
         # Extra columns in future_df
         (
-            {"item_id": ["A"], "timestamp": ["2023-01-01"], "cov1": [1.0], "cov2": [1.0]},
+            {
+                "item_id": ["A"],
+                "timestamp": ["2023-01-01"],
+                "cov1": [1.0],
+                "cov2": [1.0],
+            },
             "future_df cannot contain columns not present",
         ),
     ],
@@ -573,7 +756,10 @@ def test_predict_df_with_future_df_missing_series_raises_error(pipeline):
 def test_predict_df_with_future_df_with_different_lengths_raises_error(pipeline):
     df = create_df(series_ids=["A", "B"], covariates=["cov1"])
     future_df = create_future_df(
-        get_forecast_start_times(df), series_ids=["A", "B"], n_points=[3, 7], covariates=["cov1"]
+        get_forecast_start_times(df),
+        series_ids=["A", "B"],
+        n_points=[3, 7],
+        covariates=["cov1"],
     )
 
     with pytest.raises(ValueError, match="all time series must have length"):
@@ -583,7 +769,11 @@ def test_predict_df_with_future_df_with_different_lengths_raises_error(pipeline)
 def test_predict_df_with_future_df_with_different_freq_raises_error(pipeline):
     df = create_df(series_ids=["A", "B"], covariates=["cov1"], freq="h")
     future_df = create_future_df(
-        get_forecast_start_times(df), series_ids=["A", "B"], n_points=[3, 3], covariates=["cov1"], freq="D"
+        get_forecast_start_times(df),
+        series_ids=["A", "B"],
+        n_points=[3, 3],
+        covariates=["cov1"],
+        freq="D",
     )
 
     with pytest.raises(ValueError, match="must have the same frequency as context"):
@@ -612,17 +802,26 @@ def test_predict_df_with_future_df_with_different_freq_raises_error(pipeline):
             [
                 {
                     "target": torch.rand(10),
-                    "past_covariates": {"feat_1": torch.rand(10), "feat_2": torch.rand(10)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(10),
+                        "feat_2": torch.rand(10),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(99),
-                    "past_covariates": {"feat_1": torch.rand(99), "feat_2": torch.rand(99)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(99),
+                        "feat_2": torch.rand(99),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(17),
-                    "past_covariates": {"feat_1": torch.rand(17), "feat_2": torch.rand(17)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(17),
+                        "feat_2": torch.rand(17),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
             ],
@@ -634,20 +833,30 @@ def test_predict_df_with_future_df_with_different_freq_raises_error(pipeline):
             [
                 {
                     "target": torch.rand(1000),
-                    "past_covariates": {"temperature": torch.rand(1000), "precipitation": torch.rand(1000)},
+                    "past_covariates": {
+                        "temperature": torch.rand(1000),
+                        "precipitation": torch.rand(1000),
+                    },
                     "future_covariates": {"temperature": torch.rand(200)},
                 },
-                {"target": torch.rand(2, 150), "past_covariates": {"wind_speed": torch.rand(150)}},
+                {
+                    "target": torch.rand(2, 150),
+                    "past_covariates": {"wind_speed": torch.rand(150)},
+                },
                 {
                     "target": np.random.rand(150),
                     "past_covariates": {
                         "numeric_covariate_1": np.random.rand(150),
                         "numeric_covariate_2": np.random.rand(150),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=150),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=150
+                        ),
                     },
                     "future_covariates": {
                         "numeric_covariate_1": np.random.rand(200),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=200),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=200
+                        ),
                     },
                 },
                 {
@@ -655,11 +864,15 @@ def test_predict_df_with_future_df_with_different_freq_raises_error(pipeline):
                     "past_covariates": {
                         "numeric_covariate_1": np.random.rand(150),
                         "numeric_covariate_2": np.random.rand(150),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=150),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=150
+                        ),
                     },
                     "future_covariates": {
                         "numeric_covariate_1": np.random.rand(200),
-                        "cat_covariate": np.random.choice(["A", "B", "C", "D", "E"], size=200),
+                        "cat_covariate": np.random.choice(
+                            ["A", "B", "C", "D", "E"], size=200
+                        ),
                     },
                 },
                 {"target": torch.rand(1, 150)},
@@ -680,14 +893,22 @@ def test_when_input_is_valid_then_pipeline_can_be_finetuned(
 ):
     # Get outputs before fine-tuning
     orig_outputs_before = pipeline.predict(inputs, prediction_length=prediction_length)
-    ft_pipeline = pipeline.fit(inputs, prediction_length=prediction_length, num_steps=5, min_past=1, batch_size=32)
+    ft_pipeline = pipeline.fit(
+        inputs,
+        prediction_length=prediction_length,
+        num_steps=5,
+        min_past=1,
+        batch_size=32,
+    )
     # Get outputs from fine-tuned pipeline
     ft_outputs = ft_pipeline.predict(inputs, prediction_length=prediction_length)
     # Get outputs from original pipeline after fine-tuning
     orig_outputs_after = pipeline.predict(inputs, prediction_length=prediction_length)
 
     # Check output shapes are correct and output is different from the pretrained model outputs
-    assert isinstance(ft_outputs, list) and len(ft_outputs) == len(expected_output_shapes)
+    assert isinstance(ft_outputs, list) and len(ft_outputs) == len(
+        expected_output_shapes
+    )
     for orig_out_before, finetuned_out, orig_out_after, expected_shape in zip(
         orig_outputs_before, ft_outputs, orig_outputs_after, expected_output_shapes
     ):
@@ -705,17 +926,26 @@ def test_when_input_is_valid_then_pipeline_can_be_finetuned(
             [
                 {
                     "target": torch.rand(10),
-                    "past_covariates": {"feat_1": torch.rand(10), "feat_2": torch.rand(10)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(10),
+                        "feat_2": torch.rand(10),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(99),
-                    "past_covariates": {"feat_1": torch.rand(99), "feat_2": torch.rand(99)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(99),
+                        "feat_2": torch.rand(99),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(17),
-                    "past_covariates": {"feat_1": torch.rand(17), "feat_2": torch.rand(17)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(17),
+                        "feat_2": torch.rand(17),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
             ],
@@ -724,7 +954,9 @@ def test_when_input_is_valid_then_pipeline_can_be_finetuned(
         )
     ],
 )
-def test_pipeline_can_be_finetuned_with_validation(pipeline, inputs, prediction_length, expected_output_shapes):
+def test_pipeline_can_be_finetuned_with_validation(
+    pipeline, inputs, prediction_length, expected_output_shapes
+):
     # Get outputs before fine-tuning
     orig_outputs_before = pipeline.predict(inputs, prediction_length=prediction_length)
     ft_pipeline = pipeline.fit(
@@ -743,7 +975,9 @@ def test_pipeline_can_be_finetuned_with_validation(pipeline, inputs, prediction_
     orig_outputs_after = pipeline.predict(inputs, prediction_length=prediction_length)
 
     # Check output shapes are correct and output is different from the pretrained model outputs
-    assert isinstance(ft_outputs, list) and len(ft_outputs) == len(expected_output_shapes)
+    assert isinstance(ft_outputs, list) and len(ft_outputs) == len(
+        expected_output_shapes
+    )
     for orig_out_before, finetuned_out, orig_out_after, expected_shape in zip(
         orig_outputs_before, ft_outputs, orig_outputs_after, expected_output_shapes
     ):
@@ -761,17 +995,26 @@ def test_pipeline_can_be_finetuned_with_validation(pipeline, inputs, prediction_
             [
                 {
                     "target": torch.rand(10),
-                    "past_covariates": {"feat_1": torch.rand(10), "feat_2": torch.rand(10)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(10),
+                        "feat_2": torch.rand(10),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(99),
-                    "past_covariates": {"feat_1": torch.rand(99), "feat_2": torch.rand(99)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(99),
+                        "feat_2": torch.rand(99),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(17),
-                    "past_covariates": {"feat_1": torch.rand(17), "feat_2": torch.rand(17)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(17),
+                        "feat_2": torch.rand(17),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
             ],
@@ -808,7 +1051,9 @@ def test_pipeline_can_be_finetuned_with_empty_future_covariates(
     orig_outputs_after = pipeline.predict(inputs, prediction_length=prediction_length)
 
     # Check output shapes are correct and output is different from the pretrained model outputs
-    assert isinstance(ft_outputs, list) and len(ft_outputs) == len(expected_output_shapes)
+    assert isinstance(ft_outputs, list) and len(ft_outputs) == len(
+        expected_output_shapes
+    )
     for orig_out_before, finetuned_out, orig_out_after, expected_shape in zip(
         orig_outputs_before, ft_outputs, orig_outputs_after, expected_output_shapes
     ):
@@ -830,17 +1075,26 @@ def test_pipeline_can_be_finetuned_with_empty_future_covariates(
             [
                 {
                     "target": torch.rand(10),
-                    "past_covariates": {"feat_1": torch.rand(10), "feat_2": torch.rand(10)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(10),
+                        "feat_2": torch.rand(10),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(29),
-                    "past_covariates": {"feat_1": torch.rand(29), "feat_2": torch.rand(29)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(29),
+                        "feat_2": torch.rand(29),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
                 {
                     "target": torch.rand(17),
-                    "past_covariates": {"feat_1": torch.rand(17), "feat_2": torch.rand(17)},
+                    "past_covariates": {
+                        "feat_1": torch.rand(17),
+                        "feat_2": torch.rand(17),
+                    },
                     "future_covariates": {"feat_1": torch.rand(15)},
                 },
             ],
@@ -848,10 +1102,16 @@ def test_pipeline_can_be_finetuned_with_empty_future_covariates(
         ),
     ],
 )
-def test_when_input_time_series_are_too_short_then_finetuning_raises_error(pipeline, inputs, prediction_length):
+def test_when_input_time_series_are_too_short_then_finetuning_raises_error(
+    pipeline, inputs, prediction_length
+):
     with pytest.raises(ValueError, match="The dataset is empty after filtering"):
         pipeline.fit(
-            inputs, prediction_length=prediction_length, num_steps=5, min_past=prediction_length, batch_size=32
+            inputs,
+            prediction_length=prediction_length,
+            num_steps=5,
+            min_past=prediction_length,
+            batch_size=32,
         )
 
 
@@ -871,10 +1131,18 @@ def test_when_input_time_series_are_too_short_then_finetuning_raises_error(pipel
         # With future covariates
         ({"covariates": ["cov1"]}, {"covariates": ["cov1"], "n_points": [3, 3]}, 6),
         # With past-only and future covariates
-        ({"covariates": ["cov1", "cov2"]}, {"covariates": ["cov1"], "n_points": [3, 3]}, 6),
+        (
+            {"covariates": ["cov1", "cov2"]},
+            {"covariates": ["cov1"], "n_points": [3, 3]},
+            6,
+        ),
         # With past-only and future covariates and different series order
         (
-            {"series_ids": ["B", "C", "A", "Z"], "n_points": [10, 20, 100, 256], "covariates": ["cov1", "cov2"]},
+            {
+                "series_ids": ["B", "C", "A", "Z"],
+                "n_points": [10, 20, 100, 256],
+                "covariates": ["cov1", "cov2"],
+            },
             {
                 "series_ids": ["B", "C", "A", "Z"],
                 "covariates": ["cov1"],
@@ -885,11 +1153,17 @@ def test_when_input_time_series_are_too_short_then_finetuning_raises_error(pipel
     ],
 )
 @pytest.mark.parametrize("freq", ["h", "D", "ME"])
-def test_two_step_finetuning_with_df_input_works(pipeline, context_setup, future_setup, expected_rows, freq):
+def test_two_step_finetuning_with_df_input_works(
+    pipeline, context_setup, future_setup, expected_rows, freq
+):
     prediction_length = 3
     df = create_df(**context_setup, freq=freq)
     forecast_start_times = get_forecast_start_times(df, freq)
-    future_df = create_future_df(forecast_start_times, **future_setup, freq=freq) if future_setup else None
+    future_df = (
+        create_future_df(forecast_start_times, **future_setup, freq=freq)
+        if future_setup
+        else None
+    )
 
     series_ids = context_setup.get("series_ids", ["A", "B"])
     target_columns = context_setup.get("target_cols", ["target"])
@@ -898,7 +1172,10 @@ def test_two_step_finetuning_with_df_input_works(pipeline, context_setup, future
 
     # Get predictions from the pretrained model
     orig_result_before = pipeline.predict_df(
-        df, future_df=future_df, target=target_columns, prediction_length=prediction_length
+        df,
+        future_df=future_df,
+        target=target_columns,
+        prediction_length=prediction_length,
     )
 
     # Convert df inputs to list of dicts inputs expected by finetune
@@ -911,35 +1188,57 @@ def test_two_step_finetuning_with_df_input_works(pipeline, context_setup, future
         prediction_length=prediction_length,
     )
     # Finetune the model
-    ft_pipeline = pipeline.fit(inputs, prediction_length=prediction_length, num_steps=5, min_past=1, batch_size=32)
+    ft_pipeline = pipeline.fit(
+        inputs,
+        prediction_length=prediction_length,
+        num_steps=5,
+        min_past=1,
+        batch_size=32,
+    )
     # Predict with fine-tuned model
     result = ft_pipeline.predict_df(
-        df, future_df=future_df, target=target_columns, prediction_length=prediction_length
+        df,
+        future_df=future_df,
+        target=target_columns,
+        prediction_length=prediction_length,
     )
     # Get predictions from the original pipeline again
     orig_result_after = pipeline.predict_df(
-        df, future_df=future_df, target=target_columns, prediction_length=prediction_length
+        df,
+        future_df=future_df,
+        target=target_columns,
+        prediction_length=prediction_length,
     )
 
     # Check predictions from the fine-tuned model are valid
     assert len(result) == expected_rows
     assert "item_id" in result.columns and np.all(
-        result["item_id"].to_numpy() == np.array(series_ids).repeat(n_targets * prediction_length)
+        result["item_id"].to_numpy()
+        == np.array(series_ids).repeat(n_targets * prediction_length)
     )
     assert "target_name" in result.columns and np.all(
-        result["target_name"].to_numpy() == np.tile(np.array(target_columns).repeat(prediction_length), n_series)
+        result["target_name"].to_numpy()
+        == np.tile(np.array(target_columns).repeat(prediction_length), n_series)
     )
     assert "timestamp" in result.columns and np.all(
-        result.groupby("item_id")["timestamp"].min().to_numpy() == pd.to_datetime(forecast_start_times).to_numpy()
+        result.groupby("item_id")["timestamp"].min().to_numpy()
+        == pd.to_datetime(forecast_start_times).to_numpy()
     )
     assert "predictions" in result.columns
-    assert all(str(q) in result.columns for q in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    assert all(
+        str(q) in result.columns for q in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    )
 
     # Check predictions from the original pipeline are the same before and after fine-tuning
-    assert np.allclose(orig_result_before["predictions"].to_numpy(), orig_result_after["predictions"].to_numpy())
+    assert np.allclose(
+        orig_result_before["predictions"].to_numpy(),
+        orig_result_after["predictions"].to_numpy(),
+    )
 
     # Check predictions from the fine-tuned model are different from the original predictions
-    assert not np.allclose(orig_result_before["predictions"].to_numpy(), result["predictions"].to_numpy())
+    assert not np.allclose(
+        orig_result_before["predictions"].to_numpy(), result["predictions"].to_numpy()
+    )
 
 
 @pytest.mark.parametrize("attn_implementation", ["eager", "sdpa"])
@@ -970,7 +1269,9 @@ def test_pipeline_works_with_different_attention_implementations(attn_implementa
 
 @pytest.mark.parametrize("attn_implementation", ["eager", "sdpa"])
 @pytest.mark.parametrize("output_attentions", [False, True])
-def test_attention_implementations_with_output_attentions(attn_implementation, output_attentions):
+def test_attention_implementations_with_output_attentions(
+    attn_implementation, output_attentions
+):
     """Test that attention implementations handle output_attentions correctly."""
     # Create config with specified attention implementation
     config = Chronos2CoreConfig(
@@ -1006,7 +1307,12 @@ def test_attention_implementations_with_output_attentions(attn_implementation, o
     # Check attention weights - should only be returned when output_attentions=True
     if output_attentions:
         assert output.attn_weights is not None
-        assert output.attn_weights.shape == (batch_size, config.num_heads, seq_len, seq_len)
+        assert output.attn_weights.shape == (
+            batch_size,
+            config.num_heads,
+            seq_len,
+            seq_len,
+        )
     else:
         # SDPA doesn't return weights
         if attn_implementation == "sdpa":
@@ -1032,8 +1338,12 @@ def test_eager_and_sdpa_produce_identical_outputs(pipeline):
     prediction_length = 7
 
     with torch.no_grad():
-        outputs_eager = pipeline_eager.predict(inputs_simple, prediction_length=prediction_length)
-        outputs_sdpa = pipeline_sdpa.predict(inputs_simple, prediction_length=prediction_length)
+        outputs_eager = pipeline_eager.predict(
+            inputs_simple, prediction_length=prediction_length
+        )
+        outputs_sdpa = pipeline_sdpa.predict(
+            inputs_simple, prediction_length=prediction_length
+        )
 
     # Verify outputs match exactly
     assert len(outputs_eager) == len(outputs_sdpa)
@@ -1051,15 +1361,21 @@ def test_eager_and_sdpa_produce_identical_outputs(pipeline):
             },
             "future_covariates": {
                 "temperature": np.random.randn(prediction_length),
-                "weather_type": np.random.choice(["sunny", "cloudy", "rainy"], size=prediction_length),
+                "weather_type": np.random.choice(
+                    ["sunny", "cloudy", "rainy"], size=prediction_length
+                ),
             },
         }
         for _ in range(5)
     ]
 
     with torch.no_grad():
-        outputs_eager_grouped = pipeline_eager.predict(inputs_grouped, prediction_length=prediction_length)
-        outputs_sdpa_grouped = pipeline_sdpa.predict(inputs_grouped, prediction_length=prediction_length)
+        outputs_eager_grouped = pipeline_eager.predict(
+            inputs_grouped, prediction_length=prediction_length
+        )
+        outputs_sdpa_grouped = pipeline_sdpa.predict(
+            inputs_grouped, prediction_length=prediction_length
+        )
 
     # Verify outputs match for grouped inputs
     assert len(outputs_eager_grouped) == len(outputs_sdpa_grouped)

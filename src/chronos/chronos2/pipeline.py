@@ -45,7 +45,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
         self.model = model
 
     @staticmethod
-    def _get_prob_mass_per_quantile_level(quantile_levels: torch.Tensor) -> torch.Tensor:
+    def _get_prob_mass_per_quantile_level(
+        quantile_levels: torch.Tensor,
+    ) -> torch.Tensor:
         """
         Computes normalized probability masses for quantile levels using trapezoidal rule approximation.
 
@@ -68,7 +70,11 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
         device = quantile_levels.device
         boundaries = torch.cat(
-            [torch.tensor([0.0], device=device), quantile_levels, torch.tensor([1.0], device=device)]
+            [
+                torch.tensor([0.0], device=device),
+                quantile_levels,
+                torch.tensor([1.0], device=device),
+            ]
         )
         prob_mass = (boundaries[2:] - boundaries[:-2]) / 2
         return prob_mass / prob_mass.sum()
@@ -83,7 +89,10 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
     @property
     def model_prediction_length(self) -> int:
-        return self.model.chronos_config.max_output_patches * self.model.chronos_config.output_patch_size
+        return (
+            self.model.chronos_config.max_output_patches
+            * self.model.chronos_config.output_patch_size
+        )
 
     @property
     def quantiles(self) -> list[float]:
@@ -95,14 +104,18 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
     def fit(
         self,
-        inputs: TensorOrArray
-        | Sequence[TensorOrArray]
-        | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]],
+        inputs: (
+            TensorOrArray
+            | Sequence[TensorOrArray]
+            | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]]
+        ),
         prediction_length: int,
-        validation_inputs: TensorOrArray
-        | Sequence[TensorOrArray]
-        | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]]
-        | None = None,
+        validation_inputs: (
+            TensorOrArray
+            | Sequence[TensorOrArray]
+            | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]]
+            | None
+        ) = None,
         context_length: int | None = None,
         learning_rate: float = 1e-5,
         num_steps: int = 1000,
@@ -155,7 +168,10 @@ class Chronos2Pipeline(BaseChronosPipeline):
         import torch.cuda
         from transformers.training_args import TrainingArguments
 
-        from chronos.chronos2.trainer import Chronos2Trainer, EvaluateAndSaveFinalStepCallback
+        from chronos.chronos2.trainer import (
+            Chronos2Trainer,
+            EvaluateAndSaveFinalStepCallback,
+        )
 
         warnings.warn(
             "Fine-tuning support is experimental and may be changed in future versions.",
@@ -185,14 +201,18 @@ class Chronos2Pipeline(BaseChronosPipeline):
         )
 
         if output_dir is None:
-            output_dir = Path("chronos-2-finetuned") / time.strftime("%Y-%m-%d_%H-%M-%S")
+            output_dir = Path("chronos-2-finetuned") / time.strftime(
+                "%Y-%m-%d_%H-%M-%S"
+            )
         elif isinstance(output_dir, str):
             output_dir = Path(output_dir)
 
         assert isinstance(output_dir, Path)
 
         use_cpu = str(self.model.device) == "cpu"
-        has_sm80 = torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8
+        has_sm80 = (
+            torch.cuda.is_available() and torch.cuda.get_device_capability()[0] >= 8
+        )
 
         # warn user if a cuda device is available and CPU fine-tuning is used
         if use_cpu and torch.cuda.is_available():
@@ -278,7 +298,8 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
         # update max_output_patches, if the model was fine-tuned with longer prediction_length
         model.chronos_config.max_output_patches = max(
-            model.chronos_config.max_output_patches, math.ceil(prediction_length / self.model_output_patch_size)
+            model.chronos_config.max_output_patches,
+            math.ceil(prediction_length / self.model_output_patch_size),
         )
 
         # Create a new pipeline with the fine-tuned model
@@ -305,7 +326,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         # Expand the context, future_covariates and group_ids along a new "quantile" axis
         if future_covariates is not None:
-            future_covariates = repeat(future_covariates, "b t -> b q t", q=len(unrolled_quantiles))
+            future_covariates = repeat(
+                future_covariates, "b t -> b q t", q=len(unrolled_quantiles)
+            )
         context = repeat(context, "b t -> b q t", q=len(unrolled_quantiles))
         group_ids = repeat(group_ids, "b -> b q", q=len(unrolled_quantiles))
         # Shift the group_ids so that mixing is enabled only for time series with the same group_id and
@@ -348,22 +371,28 @@ class Chronos2Pipeline(BaseChronosPipeline):
             original_values=rearrange(prediction, "b q h -> b h q"),
         )
         prediction_unrolled = rearrange(prediction_unrolled, "b h q -> b q h")
-        context = torch.cat([context, prediction_unrolled], dim=-1)[..., -self.model_context_length :]
+        context = torch.cat([context, prediction_unrolled], dim=-1)[
+            ..., -self.model_context_length :
+        ]
         n_paths = len(unrolled_quantiles)
 
         # Shift future_covariates by prediction.shape[-1] while replacing the predicted values
         # of future covariates in the context with their actual values, if known
         if future_covariates is not None:
             context, future_covariates = self._slide_context_and_future_covariates(
-                context=context, future_covariates=future_covariates, slide_by=prediction.shape[-1]
+                context=context,
+                future_covariates=future_covariates,
+                slide_by=prediction.shape[-1],
             )
 
         # Reshape (batch, n_paths, context_length) -> (batch * n_paths, context_length)
         prediction = self._predict_step(
             context=rearrange(context, "b n t -> (b n) t"),
-            future_covariates=rearrange(future_covariates, "b n t -> (b n) t")
-            if future_covariates is not None
-            else None,
+            future_covariates=(
+                rearrange(future_covariates, "b n t -> (b n) t")
+                if future_covariates is not None
+                else None
+            ),
             group_ids=rearrange(group_ids, "b n -> (b n)"),
             num_output_patches=num_output_patches,
         )
@@ -382,9 +411,11 @@ class Chronos2Pipeline(BaseChronosPipeline):
     @torch.no_grad()
     def predict(
         self,
-        inputs: TensorOrArray
-        | Sequence[TensorOrArray]
-        | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray]]],
+        inputs: (
+            TensorOrArray
+            | Sequence[TensorOrArray]
+            | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray]]]
+        ),
         prediction_length: int | None = None,
         batch_size: int = 256,
         context_length: int | None = None,
@@ -501,7 +532,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
         # are appended to the historical context and input into the model autoregressively to generate long-horizon predictions. Note that the
         # effective batch size increases by a factor of `len(unrolled_quantiles)` when making long-horizon predictions,
         # by default [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        unrolled_quantiles = kwargs.pop("unrolled_quantiles", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+        unrolled_quantiles = kwargs.pop(
+            "unrolled_quantiles", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        )
 
         if len(kwargs) > 0:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs.keys())}.")
@@ -542,7 +575,12 @@ class Chronos2Pipeline(BaseChronosPipeline):
             mode=DatasetMode.TEST,
         )
         test_loader = DataLoader(
-            test_dataset, batch_size=None, num_workers=1, pin_memory=True, shuffle=False, drop_last=False
+            test_dataset,
+            batch_size=None,
+            num_workers=1,
+            pin_memory=True,
+            shuffle=False,
+            drop_last=False,
         )
 
         all_predictions: list[torch.Tensor] = []
@@ -581,10 +619,14 @@ class Chronos2Pipeline(BaseChronosPipeline):
     ) -> list[torch.Tensor]:
         context = context.to(device=self.model.device, dtype=torch.float32)
         group_ids = group_ids.to(device=self.model.device)
-        future_covariates = future_covariates.to(device=self.model.device, dtype=torch.float32)
+        future_covariates = future_covariates.to(
+            device=self.model.device, dtype=torch.float32
+        )
 
         def get_num_output_patches(remaining_horizon: int):
-            num_output_patches = math.ceil(remaining_horizon / self.model_output_patch_size)
+            num_output_patches = math.ceil(
+                remaining_horizon / self.model_output_patch_size
+            )
             num_output_patches = min(num_output_patches, max_output_patches)
 
             return num_output_patches
@@ -615,14 +657,16 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
         # long horizon heuristic
         while remaining > 0:
-            prediction, context, future_covariates = self._autoregressive_unroll_for_long_horizon(
-                context=context,
-                group_ids=group_ids,
-                future_covariates=future_covariates,
-                prediction=prediction,
-                unrolled_quantiles=unrolled_quantiles_tensor,
-                unrolled_sample_weights=unrolled_sample_weights,
-                num_output_patches=get_num_output_patches(remaining),
+            prediction, context, future_covariates = (
+                self._autoregressive_unroll_for_long_horizon(
+                    context=context,
+                    group_ids=group_ids,
+                    future_covariates=future_covariates,
+                    prediction=prediction,
+                    unrolled_quantiles=unrolled_quantiles_tensor,
+                    unrolled_sample_weights=unrolled_sample_weights,
+                    num_output_patches=get_num_output_patches(remaining),
+                )
             )
             predictions.append(prediction)
             remaining -= prediction.shape[-1]
@@ -648,16 +692,23 @@ class Chronos2Pipeline(BaseChronosPipeline):
                 batch_size = len(future_covariates)
                 padding_size = output_size - future_covariates.shape[1]
                 padding_tensor = torch.full(
-                    (batch_size, padding_size), fill_value=torch.nan, device=future_covariates.device
+                    (batch_size, padding_size),
+                    fill_value=torch.nan,
+                    device=future_covariates.device,
                 )
-                future_covariates = torch.cat([future_covariates, padding_tensor], dim=1)
+                future_covariates = torch.cat(
+                    [future_covariates, padding_tensor], dim=1
+                )
 
             else:
                 future_covariates = future_covariates[..., :output_size]
             kwargs["future_covariates"] = future_covariates
         with torch.no_grad():
             prediction: torch.Tensor = self.model(
-                context=context, group_ids=group_ids, num_output_patches=num_output_patches, **kwargs
+                context=context,
+                group_ids=group_ids,
+                num_output_patches=num_output_patches,
+                **kwargs,
             ).quantile_preds.to(context)
 
         return prediction
@@ -669,7 +720,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
         # replace context with future_covariates, where the values of future covariates are known (not NaN)
         future_covariates_slice = future_covariates[..., :slide_by]
         context[..., -slide_by:] = torch.where(
-            torch.isnan(future_covariates_slice), context[..., -slide_by:], future_covariates_slice
+            torch.isnan(future_covariates_slice),
+            context[..., -slide_by:],
+            future_covariates_slice,
         )
         # shift future_covariates
         future_covariates = future_covariates[..., slide_by:]
@@ -678,9 +731,11 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
     def predict_quantiles(  # type: ignore[override]
         self,
-        inputs: TensorOrArray
-        | Sequence[TensorOrArray]
-        | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray]]],
+        inputs: (
+            TensorOrArray
+            | Sequence[TensorOrArray]
+            | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray]]]
+        ),
         prediction_length: int | None = None,
         quantile_levels: list[float] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
         **predict_kwargs,
@@ -704,20 +759,24 @@ class Chronos2Pipeline(BaseChronosPipeline):
         """
         training_quantile_levels = self.quantiles
 
-        predictions: list[torch.Tensor] = self.predict(inputs, prediction_length=prediction_length, **predict_kwargs)
+        predictions: list[torch.Tensor] = self.predict(
+            inputs, prediction_length=prediction_length, **predict_kwargs
+        )
 
         # Swap quantile and time axes for each prediction
         predictions = [rearrange(pred, "... q h -> ... h q") for pred in predictions]
 
         if set(quantile_levels).issubset(training_quantile_levels):
             # no need to perform intra/extrapolation
-            quantile_indices = [training_quantile_levels.index(q) for q in quantile_levels]
+            quantile_indices = [
+                training_quantile_levels.index(q) for q in quantile_levels
+            ]
             quantiles = [pred[..., quantile_indices] for pred in predictions]
         else:
             # we interpolate quantiles if quantiles that Chronos-2 was trained on were not provided
-            if min(quantile_levels) < min(training_quantile_levels) or max(quantile_levels) > max(
-                training_quantile_levels
-            ):
+            if min(quantile_levels) < min(training_quantile_levels) or max(
+                quantile_levels
+            ) > max(training_quantile_levels):
                 logger.warning(
                     f"\tQuantiles to be predicted ({quantile_levels}) are not within the range of "
                     f"quantiles that Chronos-2 was trained on ({training_quantile_levels}). "
@@ -726,7 +785,8 @@ class Chronos2Pipeline(BaseChronosPipeline):
                 )
 
             quantiles = [
-                interpolate_quantiles(quantile_levels, training_quantile_levels, pred) for pred in predictions
+                interpolate_quantiles(quantile_levels, training_quantile_levels, pred)
+                for pred in predictions
             ]
 
         # NOTE: the median is returned as the mean here
@@ -788,7 +848,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
         try:
             import pandas as pd
         except ImportError:
-            raise ImportError("pandas is required for predict_df. Please install it with `pip install pandas`.")
+            raise ImportError(
+                "pandas is required for predict_df. Please install it with `pip install pandas`."
+            )
 
         if prediction_length is None:
             prediction_length = self.model_prediction_length
@@ -796,13 +858,15 @@ class Chronos2Pipeline(BaseChronosPipeline):
         if not isinstance(target, list):
             target = [target]
 
-        inputs, original_order, prediction_timestamps = convert_df_input_to_list_of_dicts_input(
-            df=df,
-            future_df=future_df,
-            id_column=id_column,
-            timestamp_column=timestamp_column,
-            target_columns=target,
-            prediction_length=prediction_length,
+        inputs, original_order, prediction_timestamps = (
+            convert_df_input_to_list_of_dicts_input(
+                df=df,
+                future_df=future_df,
+                id_column=id_column,
+                timestamp_column=timestamp_column,
+                target_columns=target,
+                prediction_length=prediction_length,
+            )
         )
 
         # Generate forecasts
@@ -815,12 +879,16 @@ class Chronos2Pipeline(BaseChronosPipeline):
             **predict_kwargs,
         )
         # since predict_df tasks are homogenous by input design, we can safely stack the list of tensors into a single tensor
-        quantiles_np = torch.stack(quantiles).numpy()  # [n_tasks, n_variates, horizon, num_quantiles]
+        quantiles_np = torch.stack(
+            quantiles
+        ).numpy()  # [n_tasks, n_variates, horizon, num_quantiles]
         mean_np = torch.stack(mean).numpy()  # [n_tasks, n_variates, horizon]
 
         results_dfs = []
         for i, (series_id, future_ts) in enumerate(prediction_timestamps.items()):
-            q_pred = quantiles_np[i]  # (n_variates, prediction_length, len(quantile_levels))
+            q_pred = quantiles_np[
+                i
+            ]  # (n_variates, prediction_length, len(quantile_levels))
             point_pred = mean_np[i]  # (n_variates, prediction_length)
 
             for target_idx, target_col in enumerate(target):
@@ -856,10 +924,14 @@ class Chronos2Pipeline(BaseChronosPipeline):
         from chronos.chronos2.dataset import convert_fev_window_to_list_of_dicts_input
 
         inputs, target_columns, past_dynamic_columns, known_dynamic_columns = (
-            convert_fev_window_to_list_of_dicts_input(window=window, as_univariate=as_univariate)
+            convert_fev_window_to_list_of_dicts_input(
+                window=window, as_univariate=as_univariate
+            )
         )
 
-        num_variates: int = len(target_columns) + len(past_dynamic_columns) + len(known_dynamic_columns)
+        num_variates: int = (
+            len(target_columns) + len(past_dynamic_columns) + len(known_dynamic_columns)
+        )
         if batch_size < num_variates:
             warnings.warn(
                 f"batch_size ({batch_size}) is smaller than num_variates ({num_variates}) in the task. "
@@ -880,21 +952,29 @@ class Chronos2Pipeline(BaseChronosPipeline):
             **predict_kwargs,
         )
         # since fev tasks are homogenous, we can safely stack the list of tensors into a single tensor
-        quantiles_np = torch.stack(quantiles).numpy()  # [n_tasks, n_variates, horizon, num_quantiles]
+        quantiles_np = torch.stack(
+            quantiles
+        ).numpy()  # [n_tasks, n_variates, horizon, num_quantiles]
         mean_np = torch.stack(mean).numpy()  # [n_tasks, n_variates, horizon]
 
         inference_time_s = time.monotonic() - start_time
 
-        multivariate_forecast: dict[str, dict[str, np.ndarray]] = {variate_name: {} for variate_name in target_columns}
+        multivariate_forecast: dict[str, dict[str, np.ndarray]] = {
+            variate_name: {} for variate_name in target_columns
+        }
         # mean_np is actually the median here
         point_forecast = mean_np  # [num_items, n_variates, horizon]
 
         for v_idx, variate_name in enumerate(target_columns):
-            multivariate_forecast[variate_name]["predictions"] = point_forecast[:, v_idx]
+            multivariate_forecast[variate_name]["predictions"] = point_forecast[
+                :, v_idx
+            ]
 
         for q_idx, level in enumerate(quantile_levels):
             for v_idx, variate_name in enumerate(target_columns):
-                multivariate_forecast[variate_name][str(level)] = quantiles_np[:, v_idx, :, q_idx]
+                multivariate_forecast[variate_name][str(level)] = quantiles_np[
+                    :, v_idx, :, q_idx
+                ]
 
         predictions_dict: dict = {}
         for variate_name in target_columns:
@@ -908,7 +988,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
         predictions.set_format("numpy")
 
         if as_univariate:
-            predictions = fev.utils.combine_univariate_predictions_to_multivariate(predictions, window.target_columns)
+            predictions = fev.utils.combine_univariate_predictions_to_multivariate(
+                predictions, window.target_columns
+            )
 
         return predictions, inference_time_s
 
@@ -949,17 +1031,25 @@ class Chronos2Pipeline(BaseChronosPipeline):
         try:
             import fev
         except ImportError:
-            raise ImportError("fev is required for predict_fev. Please install it with `pip install fev`.")
+            raise ImportError(
+                "fev is required for predict_fev. Please install it with `pip install fev`."
+            )
 
         pipeline = self
         if finetune_kwargs is not None:
             # only fine-tune the model on the first window
             first_window = task.get_window(0)
             inputs, target_columns, past_dynamic_columns, known_dynamic_columns = (
-                convert_fev_window_to_list_of_dicts_input(window=first_window, as_univariate=as_univariate)
+                convert_fev_window_to_list_of_dicts_input(
+                    window=first_window, as_univariate=as_univariate
+                )
             )
 
-            num_variates: int = len(target_columns) + len(past_dynamic_columns) + len(known_dynamic_columns)
+            num_variates: int = (
+                len(target_columns)
+                + len(past_dynamic_columns)
+                + len(known_dynamic_columns)
+            )
             if batch_size < num_variates:
                 warnings.warn(
                     f"batch_size ({batch_size}) is smaller than num_variates ({num_variates}) in the task. "
@@ -971,7 +1061,9 @@ class Chronos2Pipeline(BaseChronosPipeline):
 
             finetune_kwargs = deepcopy(finetune_kwargs)
             finetune_kwargs["prediction_length"] = first_window.horizon
-            finetune_kwargs["batch_size"] = finetune_kwargs.get("batch_size", batch_size)
+            finetune_kwargs["batch_size"] = finetune_kwargs.get(
+                "batch_size", batch_size
+            )
 
             try:
                 pipeline = self.fit(inputs=inputs, **finetune_kwargs)
@@ -1002,16 +1094,22 @@ class Chronos2Pipeline(BaseChronosPipeline):
         """
 
         if str(pretrained_model_name_or_path).startswith("s3://"):
-            return BaseChronosPipeline.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
+            return BaseChronosPipeline.from_pretrained(
+                pretrained_model_name_or_path, *args, **kwargs
+            )
 
-        config = AutoConfig.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)
+        config = AutoConfig.from_pretrained(
+            pretrained_model_name_or_path, *args, **kwargs
+        )
         assert hasattr(config, "chronos_config"), "Not a Chronos config file"
 
         architecture = config.architectures[0]
         class_ = getattr(chronos.chronos2, architecture)
 
         if class_ is None:
-            logger.warning(f"Unknown architecture: {architecture}, defaulting to Chronos2Model")
+            logger.warning(
+                f"Unknown architecture: {architecture}, defaulting to Chronos2Model"
+            )
             class_ = Chronos2Model
 
         model = class_.from_pretrained(pretrained_model_name_or_path, *args, **kwargs)

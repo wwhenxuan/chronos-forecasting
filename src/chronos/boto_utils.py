@@ -18,7 +18,9 @@ from botocore.exceptions import ClientError, NoCredentialsError
 logger = logging.getLogger(__name__)
 
 MODEL_FILENAMES = ["config.json", "model.safetensors", "LICENSE.txt"]
-CLOUDFRONT_MAPPING = {"s3://autogluon/chronos-2": "https://d7057vjasule5.cloudfront.net"}
+CLOUDFRONT_MAPPING = {
+    "s3://autogluon/chronos-2": "https://d7057vjasule5.cloudfront.net"
+}
 CHUNK_SIZE = 1024 * 1024  # 1MB
 
 
@@ -77,7 +79,9 @@ def download_model_files_from_s3(
             elif isinstance(e, NoCredentialsError):
                 logger.warning("credentials error, falling back to unsigned")
                 # Fallback to UNSIGNED for public buckets
-                s3_client = boto3_session.client("s3", config=Config(signature_version=UNSIGNED))
+                s3_client = boto3_session.client(
+                    "s3", config=Config(signature_version=UNSIGNED)
+                )
                 s3_client.head_object(Bucket=bucket, Key=key)
             else:
                 raise
@@ -91,7 +95,9 @@ def download_model_files_from_s3(
             s3_client.download_file(bucket, key, str(dest))
         except NoCredentialsError:
             # Fallback to UNSIGNED for public buckets
-            s3_client = boto3_session.client("s3", config=Config(signature_version=UNSIGNED))
+            s3_client = boto3_session.client(
+                "s3", config=Config(signature_version=UNSIGNED)
+            )
             s3_client.download_file(bucket, key, str(dest))
 
 
@@ -100,7 +106,9 @@ def cache_model_from_s3(
     force_download: bool = False,
     boto3_session: boto3.Session | None = None,
 ):
-    assert re.match("^s3://([^/]+)/(.*?([^/]+)/?)$", s3_uri) is not None, f"Not a valid S3 URI: {s3_uri}"
+    assert (
+        re.match("^s3://([^/]+)/(.*?([^/]+)/?)$", s3_uri) is not None
+    ), f"Not a valid S3 URI: {s3_uri}"
     cache_home = Path(os.environ.get("XGD_CACHE_HOME", os.path.expanduser("~/.cache")))
     cache_dir = cache_home / "chronos"
     s3_uri = s3_uri.rstrip("/")

@@ -15,7 +15,13 @@ from gluonts.model.evaluation import evaluate_forecasts
 from gluonts.model.forecast import QuantileForecast, SampleForecast
 from tqdm.auto import tqdm
 
-from chronos import BaseChronosPipeline, Chronos2Pipeline, ChronosBoltPipeline, ChronosPipeline, ForecastType
+from chronos import (
+    BaseChronosPipeline,
+    Chronos2Pipeline,
+    ChronosBoltPipeline,
+    ChronosPipeline,
+    ForecastType,
+)
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -23,7 +29,11 @@ QUANTILES = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
 
 def to_gluonts_univariate(hf_dataset: datasets.Dataset):
-    series_fields = [col for col in hf_dataset.features if isinstance(hf_dataset.features[col], datasets.Sequence)]
+    series_fields = [
+        col
+        for col in hf_dataset.features
+        if isinstance(hf_dataset.features[col], datasets.Sequence)
+    ]
     series_fields.remove("timestamp")
     dataset_length = hf_dataset.info.splits["train"].num_examples * len(series_fields)
 
@@ -58,7 +68,9 @@ def load_and_split_dataset(backtest_config: dict):
     # be distribued due to license restrictions and must be generated on the fly
     trust_remote_code = True if hf_repo == "autogluon/chronos_datasets_extra" else False
 
-    ds = datasets.load_dataset(hf_repo, dataset_name, split="train", trust_remote_code=trust_remote_code)
+    ds = datasets.load_dataset(
+        hf_repo, dataset_name, split="train", trust_remote_code=trust_remote_code
+    )
     ds.set_format("numpy")
 
     gts_dataset = to_gluonts_univariate(ds)
@@ -100,7 +112,9 @@ def generate_forecasts(
         forecast_start_date = ts["start"] + len(ts["target"])
 
         if pipeline.forecast_type == ForecastType.SAMPLES:
-            forecasts.append(SampleForecast(samples=item, start_date=forecast_start_date))
+            forecasts.append(
+                SampleForecast(samples=item, start_date=forecast_start_date)
+            )
         elif pipeline.forecast_type == ForecastType.QUANTILES:
             forecasts.append(
                 QuantileForecast(
@@ -133,7 +147,9 @@ def eval_pipeline_and_save_results(
         logger.info(f"Loading {dataset_name}")
         test_data = load_and_split_dataset(backtest_config=config)
 
-        logger.info(f"Generating forecasts for {dataset_name} ({len(test_data.input)} time series)")
+        logger.info(
+            f"Generating forecasts for {dataset_name} ({len(test_data.input)} time series)"
+        )
         forecasts = generate_forecasts(
             test_data.input,
             pipeline=pipeline,
@@ -220,7 +236,9 @@ def chronos(
     assert isinstance(torch_dtype, torch.dtype)
 
     # Load Chronos
-    pipeline = BaseChronosPipeline.from_pretrained(model_id, device_map=device, torch_dtype=torch_dtype)
+    pipeline = BaseChronosPipeline.from_pretrained(
+        model_id, device_map=device, torch_dtype=torch_dtype
+    )
 
     assert isinstance(pipeline, ChronosPipeline)
 
@@ -274,7 +292,9 @@ def chronos_bolt(
     assert isinstance(torch_dtype, torch.dtype)
 
     # Load Chronos
-    pipeline = BaseChronosPipeline.from_pretrained(model_id, device_map=device, torch_dtype=torch_dtype)
+    pipeline = BaseChronosPipeline.from_pretrained(
+        model_id, device_map=device, torch_dtype=torch_dtype
+    )
 
     assert isinstance(pipeline, ChronosBoltPipeline)
 
@@ -325,7 +345,9 @@ def chronos_2(
     assert isinstance(torch_dtype, torch.dtype)
 
     # Load Chronos
-    pipeline = BaseChronosPipeline.from_pretrained(model_id, device_map=device, torch_dtype=torch_dtype)
+    pipeline = BaseChronosPipeline.from_pretrained(
+        model_id, device_map=device, torch_dtype=torch_dtype
+    )
 
     assert isinstance(pipeline, Chronos2Pipeline)
 

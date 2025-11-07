@@ -53,7 +53,9 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
         # for easy access to the inner HF-style model
         self.inner_model = inner_model
 
-    def _prepare_and_validate_context(self, context: Union[torch.Tensor, List[torch.Tensor]]):
+    def _prepare_and_validate_context(
+        self, context: Union[torch.Tensor, List[torch.Tensor]]
+    ):
         if isinstance(context, list):
             context = left_pad_and_stack_1D(context)
         assert isinstance(context, torch.Tensor)
@@ -63,7 +65,11 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
 
         return context
 
-    def predict(self, inputs: Union[torch.Tensor, List[torch.Tensor]], prediction_length: Optional[int] = None):
+    def predict(
+        self,
+        inputs: Union[torch.Tensor, List[torch.Tensor]],
+        prediction_length: Optional[int] = None,
+    ):
         """
         Get forecasts for the given time series. Predictions will be
         returned in fp32 on the cpu.
@@ -149,7 +155,9 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
         try:
             import fev
         except ImportError:
-            raise ImportError("fev is required for predict_fev. Please install it with `pip install fev`.")
+            raise ImportError(
+                "fev is required for predict_fev. Please install it with `pip install fev`."
+            )
 
         def batchify(lst: list, batch_size: int = 32):
             """Convert list into batches of desired size."""
@@ -163,7 +171,9 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
         predictions_per_window = []
         inference_time_s = 0.0
         for window in task.iter_windows():
-            past_data, _ = fev.convert_input_data(window, adapter="datasets", as_univariate=True)
+            past_data, _ = fev.convert_input_data(
+                window, adapter="datasets", as_univariate=True
+            )
             past_data = past_data.with_format("torch").cast_column(
                 "target", datasets.Sequence(datasets.Value("float32"))
             )
@@ -186,14 +196,18 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
 
             inference_time_s += time.monotonic() - start_time
 
-            quantiles_np = np.concatenate(quantiles_all, axis=0)  # [num_items, horizon, num_quantiles]
+            quantiles_np = np.concatenate(
+                quantiles_all, axis=0
+            )  # [num_items, horizon, num_quantiles]
             mean_np = np.concatenate(mean_all, axis=0)  # [num_items, horizon]
 
             if task.eval_metric in ["MSE", "RMSE", "RMSSE"]:
                 point_forecast = mean_np  # [num_items, horizon]
             else:
                 # use median as the point forecast
-                point_forecast = quantiles_np[:, :, quantile_levels.index(0.5)]  # [num_items, horizon]
+                point_forecast = quantiles_np[
+                    :, :, quantile_levels.index(0.5)
+                ]  # [num_items, horizon]
             predictions_dict = {"predictions": point_forecast}
 
             for idx, level in enumerate(task.quantile_levels):
@@ -201,7 +215,8 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
 
             predictions_per_window.append(
                 fev.utils.combine_univariate_predictions_to_multivariate(
-                    datasets.Dataset.from_dict(predictions_dict), target_columns=task.target_columns
+                    datasets.Dataset.from_dict(predictions_dict),
+                    target_columns=task.target_columns,
                 )
             )
         return predictions_per_window, inference_time_s
@@ -233,15 +248,21 @@ class BaseChronosPipeline(metaclass=PipelineRegistry):
             kwargs["torch_dtype"] = cls.dtypes[torch_dtype]
 
         config = AutoConfig.from_pretrained(pretrained_model_name_or_path, **kwargs)
-        is_valid_config = hasattr(config, "chronos_pipeline_class") or hasattr(config, "chronos_config")
+        is_valid_config = hasattr(config, "chronos_pipeline_class") or hasattr(
+            config, "chronos_config"
+        )
 
         if not is_valid_config:
             raise ValueError("Not a Chronos config file")
 
-        pipeline_class_name = getattr(config, "chronos_pipeline_class", "ChronosPipeline")
+        pipeline_class_name = getattr(
+            config, "chronos_pipeline_class", "ChronosPipeline"
+        )
         class_ = PipelineRegistry.REGISTRY.get(pipeline_class_name)
         if class_ is None:
-            raise ValueError(f"Trying to load unknown pipeline class: {pipeline_class_name}")
+            raise ValueError(
+                f"Trying to load unknown pipeline class: {pipeline_class_name}"
+            )
 
         return class_.from_pretrained(  # type: ignore[attr-defined]
             pretrained_model_name_or_path, *model_args, **kwargs

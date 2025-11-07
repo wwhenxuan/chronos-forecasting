@@ -31,7 +31,11 @@ def left_pad_and_cat_2D(tensors: list[torch.Tensor]) -> torch.Tensor:
     for tensor in tensors:
         n_variates, length = tensor.shape
         if length < max_len:
-            padding = torch.full((n_variates, max_len - length), fill_value=torch.nan, device=tensor.device)
+            padding = torch.full(
+                (n_variates, max_len - length),
+                fill_value=torch.nan,
+                device=tensor.device,
+            )
             tensor = torch.cat([padding, tensor], dim=-1)
         padded.append(tensor)
 
@@ -39,7 +43,9 @@ def left_pad_and_cat_2D(tensors: list[torch.Tensor]) -> torch.Tensor:
 
 
 def validate_and_prepare_single_dict_task(
-    task: Mapping[str, TensorOrArray | Mapping[str, TensorOrArray]], idx: int, prediction_length: int
+    task: Mapping[str, TensorOrArray | Mapping[str, TensorOrArray]],
+    idx: int,
+    prediction_length: int,
 ) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
     """Validates and prepares a single dictionary task for Chronos2Model.
 
@@ -82,7 +88,9 @@ def validate_and_prepare_single_dict_task(
             f"Found invalid keys in element at index {idx}. Allowed keys are {allowed_keys}, but found {keys}"
         )
     if "target" not in keys:
-        raise ValueError(f"Element at index {idx} does not contain the required key 'target'")
+        raise ValueError(
+            f"Element at index {idx} does not contain the required key 'target'"
+        )
 
     # validate target
     task_target = task["target"]
@@ -123,7 +131,9 @@ def validate_and_prepare_single_dict_task(
         )
 
     # create ordered keys: past-only first, then known-future (so known-future are the last rows)
-    task_past_only_keys = [k for k in task_covariates_keys if k not in task_future_covariates_keys]  # past_only_keys
+    task_past_only_keys = [
+        k for k in task_covariates_keys if k not in task_future_covariates_keys
+    ]  # past_only_keys
     task_ordered_covariate_keys = task_past_only_keys + task_future_covariates_keys
 
     task_past_covariates_list: list[torch.Tensor] = []
@@ -143,9 +153,13 @@ def validate_and_prepare_single_dict_task(
                     cat_encoder.fit(X, y)
                 # ordinal encoding, if the target is > 1-d
                 else:
-                    cat_encoder = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=np.nan)
+                    cat_encoder = OrdinalEncoder(
+                        handle_unknown="use_encoded_value", unknown_value=np.nan
+                    )
                     cat_encoder.fit(tensor.astype(str).reshape(-1, 1))
-                tensor = cat_encoder.transform(tensor.astype(str).reshape(-1, 1)).reshape(tensor.shape)
+                tensor = cat_encoder.transform(
+                    tensor.astype(str).reshape(-1, 1)
+                ).reshape(tensor.shape)
                 cat_encoders[key] = cat_encoder
             tensor = torch.from_numpy(tensor)
         assert isinstance(tensor, torch.Tensor)
@@ -165,12 +179,16 @@ def validate_and_prepare_single_dict_task(
     task_future_covariates_list: list[torch.Tensor] = []
     for key in task_ordered_covariate_keys:
         # future values of past-only covariates are filled with NaNs
-        tensor = task_future_covariates.get(key, torch.full((prediction_length,), fill_value=torch.nan))
+        tensor = task_future_covariates.get(
+            key, torch.full((prediction_length,), fill_value=torch.nan)
+        )
         if isinstance(tensor, np.ndarray):
             # apply encoding to categorical variates
             if not np.issubdtype(tensor.dtype, np.number):
                 cat_encoder = cat_encoders[key]
-                tensor = cat_encoder.transform(tensor.astype(str).reshape(-1, 1)).reshape(tensor.shape)
+                tensor = cat_encoder.transform(
+                    tensor.astype(str).reshape(-1, 1)
+                ).reshape(tensor.shape)
             tensor = torch.from_numpy(tensor)
         assert isinstance(tensor, torch.Tensor)
         if tensor.ndim != 1 or len(tensor) != prediction_length:
@@ -186,10 +204,14 @@ def validate_and_prepare_single_dict_task(
     )
     # future values of target series are filled with NaNs
     task_future_covariates_target_padding = torch.full(
-        (task_target.shape[0], prediction_length), fill_value=torch.nan, device=task_target.device
+        (task_target.shape[0], prediction_length),
+        fill_value=torch.nan,
+        device=task_target.device,
     )
 
-    task_context_tensor = torch.cat([task_target, task_past_covariates_tensor], dim=0).to(dtype=torch.float32)
+    task_context_tensor = torch.cat(
+        [task_target, task_past_covariates_tensor], dim=0
+    ).to(dtype=torch.float32)
     task_future_covariates_tensor = torch.cat(
         [task_future_covariates_target_padding, task_future_covariates_tensor], dim=0
     ).to(dtype=torch.float32)
@@ -243,7 +265,9 @@ def convert_list_of_tensors_input_to_list_of_dicts_input(
     return output
 
 
-def convert_tensor_input_to_list_of_dicts_input(tensor: TensorOrArray) -> list[dict[str, torch.Tensor]]:
+def convert_tensor_input_to_list_of_dicts_input(
+    tensor: TensorOrArray,
+) -> list[dict[str, torch.Tensor]]:
     """
     Convert a tensor input format to a list of dictionaries input format.
 
@@ -289,7 +313,9 @@ def _validate_df_types_and_cast(
     for col in df.columns.drop([id_column, timestamp_column]):
         col_dtype = df[col].dtype
         if col in target_columns and not pd.api.types.is_numeric_dtype(df[col]):
-            raise ValueError(f"All target columns must be numeric but got {col=} with dtype={col_dtype}")
+            raise ValueError(
+                f"All target columns must be numeric but got {col=} with dtype={col_dtype}"
+            )
 
         if (
             pd.api.types.is_object_dtype(df[col])
@@ -297,7 +323,9 @@ def _validate_df_types_and_cast(
             or isinstance(col_dtype, pd.CategoricalDtype)
         ):
             astype_dict[col] = "category"
-        elif pd.api.types.is_numeric_dtype(df[col]) or pd.api.types.is_bool_dtype(df[col]):
+        elif pd.api.types.is_numeric_dtype(df[col]) or pd.api.types.is_bool_dtype(
+            df[col]
+        ):
             astype_dict[col] = "float32"
         else:
             raise ValueError(
@@ -325,7 +353,14 @@ def validate_df_inputs(
     prediction_length: int,
     id_column: str = "item_id",
     timestamp_column: str = "timestamp",
-) -> tuple["pd.DataFrame", "pd.DataFrame | None", "pd.Timedelta", list[int], list[int] | None, np.ndarray]:
+) -> tuple[
+    "pd.DataFrame",
+    "pd.DataFrame | None",
+    "pd.Timedelta",
+    list[int],
+    list[int] | None,
+    np.ndarray,
+]:
     """
     Validates and prepares dataframe inputs passed to `Chronos2Pipeline.predict_df`.
 
@@ -378,11 +413,15 @@ def validate_df_inputs(
     required_cols = [id_column, timestamp_column] + target_columns
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
-        raise ValueError(f"df does not contain all expected columns. Missing columns: {missing_cols}")
+        raise ValueError(
+            f"df does not contain all expected columns. Missing columns: {missing_cols}"
+        )
 
     if future_df is not None:
         future_required_cols = [id_column, timestamp_column]
-        missing_future_cols = [col for col in future_required_cols if col not in future_df.columns]
+        missing_future_cols = [
+            col for col in future_required_cols if col not in future_df.columns
+        ]
         targets_in_future = [col for col in future_df.columns if col in target_columns]
         extra_future_cols = [col for col in future_df.columns if col not in df.columns]
         if missing_future_cols:
@@ -394,10 +433,16 @@ def validate_df_inputs(
                 f"future_df cannot contain target columns. Target columns found in future_df: {targets_in_future}"
             )
         if extra_future_cols:
-            raise ValueError(f"future_df cannot contain columns not present in df. Extra columns: {extra_future_cols}")
+            raise ValueError(
+                f"future_df cannot contain columns not present in df. Extra columns: {extra_future_cols}"
+            )
 
     df, future_df = _validate_df_types_and_cast(
-        df, future_df, id_column=id_column, timestamp_column=timestamp_column, target_columns=target_columns
+        df,
+        future_df,
+        id_column=id_column,
+        timestamp_column=timestamp_column,
+        target_columns=target_columns,
     )
 
     # Get the original order of time series IDs
@@ -454,14 +499,18 @@ def validate_df_inputs(
         # Validate future series lengths match prediction_length
         future_start_idx = 0
         for future_length in future_series_lengths:
-            future_series_data = future_df.iloc[future_start_idx : future_start_idx + future_length]
+            future_series_data = future_df.iloc[
+                future_start_idx : future_start_idx + future_length
+            ]
             future_timestamps = future_series_data[timestamp_column]
             future_series_id = future_series_data.iloc[0][id_column]
             if future_length != prediction_length:
                 raise ValueError(
                     f"Future covariates all time series must have length {prediction_length}, got {future_length} for series {future_series_id}"
                 )
-            if future_length < 3 or inferred_freq != validate_freq(future_timestamps, future_series_id):
+            if future_length < 3 or inferred_freq != validate_freq(
+                future_timestamps, future_series_id
+            ):
                 raise ValueError(
                     f"Future covariates must have the same frequency as context, found series {future_series_id} with a different frequency"
                 )
@@ -469,7 +518,14 @@ def validate_df_inputs(
 
         assert len(series_lengths) == len(future_series_lengths)
 
-    return df, future_df, inferred_freq, series_lengths, future_series_lengths, original_order
+    return (
+        df,
+        future_df,
+        inferred_freq,
+        series_lengths,
+        future_series_lengths,
+        original_order,
+    )
 
 
 def convert_df_input_to_list_of_dicts_input(
@@ -479,7 +535,11 @@ def convert_df_input_to_list_of_dicts_input(
     prediction_length: int,
     id_column: str = "item_id",
     timestamp_column: str = "timestamp",
-) -> tuple[list[dict[str, np.ndarray | dict[str, np.ndarray]]], np.ndarray, dict[str, "pd.DatetimeIndex"]]:
+) -> tuple[
+    list[dict[str, np.ndarray | dict[str, np.ndarray]]],
+    np.ndarray,
+    dict[str, "pd.DatetimeIndex"],
+]:
     """
     Convert from dataframe input format to a list of dictionaries input format.
 
@@ -515,13 +575,15 @@ def convert_df_input_to_list_of_dicts_input(
 
     import pandas as pd
 
-    df, future_df, freq, series_lengths, future_series_lengths, original_order = validate_df_inputs(
-        df,
-        future_df=future_df,
-        id_column=id_column,
-        timestamp_column=timestamp_column,
-        target_columns=target_columns,
-        prediction_length=prediction_length,
+    df, future_df, freq, series_lengths, future_series_lengths, original_order = (
+        validate_df_inputs(
+            df,
+            future_df=future_df,
+            id_column=id_column,
+            timestamp_column=timestamp_column,
+            target_columns=target_columns,
+            prediction_length=prediction_length,
+        )
     )
 
     # Convert to list of dicts format
@@ -533,29 +595,39 @@ def convert_df_input_to_list_of_dicts_input(
     for i, length in enumerate(series_lengths):
         series_data = df.iloc[start_idx : start_idx + length]
         # Extract target(s)
-        target_data = series_data[target_columns].to_numpy().T  # Shape: (n_targets, history_length)
+        target_data = (
+            series_data[target_columns].to_numpy().T
+        )  # Shape: (n_targets, history_length)
         task: dict[str, np.ndarray | dict[str, np.ndarray]] = {"target": target_data}
 
         # Generate future timestamps
         series_id = series_data.iloc[0][id_column]
         last_timestamp = series_data[timestamp_column].iloc[-1]
-        future_ts = pd.date_range(start=last_timestamp, periods=prediction_length + 1, freq=freq)[1:]
+        future_ts = pd.date_range(
+            start=last_timestamp, periods=prediction_length + 1, freq=freq
+        )[1:]
         prediction_timestamps[series_id] = future_ts
 
         # Handle covariates if present
         covariate_cols = [
-            col for col in series_data.columns if col not in [id_column, timestamp_column] + target_columns
+            col
+            for col in series_data.columns
+            if col not in [id_column, timestamp_column] + target_columns
         ]
 
         if covariate_cols:
-            past_covariates = {col: series_data[col].to_numpy() for col in covariate_cols}
+            past_covariates = {
+                col: series_data[col].to_numpy() for col in covariate_cols
+            }
             task["past_covariates"] = past_covariates
 
             # Handle future covariates
             if future_df is not None:
                 assert future_series_lengths is not None
                 future_length = future_series_lengths[i]
-                future_data = future_df.iloc[future_start_idx : future_start_idx + future_length]
+                future_data = future_df.iloc[
+                    future_start_idx : future_start_idx + future_length
+                ]
                 assert future_data[timestamp_column].iloc[0] == future_ts[0], (
                     f"the first timestamp in future_df must be the first forecast timestamp, found mismatch "
                     f"({future_data[timestamp_column].iloc[0]} != {future_ts[0]}) in series {series_id}"
@@ -563,7 +635,9 @@ def convert_df_input_to_list_of_dicts_input(
 
                 if len(future_data) > 0:
                     future_covariates = {
-                        col: future_data[col].to_numpy() for col in covariate_cols if col in future_data.columns
+                        col: future_data[col].to_numpy()
+                        for col in covariate_cols
+                        if col in future_data.columns
                     }
                     if future_covariates:
                         task["future_covariates"] = future_covariates
@@ -594,18 +668,18 @@ def _cast_fev_features(
             cat_cols.append(col)
 
     numeric_cols = target_columns + list(set(dynamic_columns) - set(cat_cols))
-    past_feature_updates = {col: datasets.Sequence(datasets.Value("float64")) for col in numeric_cols} | {
-        col: datasets.Sequence(datasets.Value("string")) for col in cat_cols
-    }
+    past_feature_updates = {
+        col: datasets.Sequence(datasets.Value("float64")) for col in numeric_cols
+    } | {col: datasets.Sequence(datasets.Value("string")) for col in cat_cols}
     past_data_features = past_data.features
     past_data_features.update(past_feature_updates)
     past_data = past_data.cast(past_data_features)
 
     future_cat_cols = [k for k in cat_cols if k in known_dynamic_columns]
     future_numeric_cols = list(set(known_dynamic_columns) - set(future_cat_cols))
-    future_feature_updates = {col: datasets.Sequence(datasets.Value("float64")) for col in future_numeric_cols} | {
-        col: datasets.Sequence(datasets.Value("string")) for col in future_cat_cols
-    }
+    future_feature_updates = {
+        col: datasets.Sequence(datasets.Value("float64")) for col in future_numeric_cols
+    } | {col: datasets.Sequence(datasets.Value("string")) for col in future_cat_cols}
     future_data_features = future_data.features
     future_data_features.update(future_feature_updates)
     future_data = future_data.cast(future_data_features)
@@ -615,11 +689,15 @@ def _cast_fev_features(
 
 def convert_fev_window_to_list_of_dicts_input(
     window: "fev.EvaluationWindow", as_univariate: bool
-) -> tuple[list[dict[str, np.ndarray | dict[str, np.ndarray]]], list[str], list[str], list[str]]:
+) -> tuple[
+    list[dict[str, np.ndarray | dict[str, np.ndarray]]], list[str], list[str], list[str]
+]:
     import fev
 
     if as_univariate:
-        past_data, future_data = fev.convert_input_data(window, adapter="datasets", as_univariate=True)
+        past_data, future_data = fev.convert_input_data(
+            window, adapter="datasets", as_univariate=True
+        )
         target_columns = ["target"]
         past_dynamic_columns = []
         known_dynamic_columns = []
@@ -646,7 +724,9 @@ def convert_fev_window_to_list_of_dicts_input(
     # past of past-only and known-future covariates
     dynamic_columns = [*past_dynamic_columns, *known_dynamic_columns]
     past_covariate_data = past_data.select_columns(dynamic_columns).with_format("numpy")
-    future_known_data = future_data.select_columns(known_dynamic_columns).with_format("numpy")
+    future_known_data = future_data.select_columns(known_dynamic_columns).with_format(
+        "numpy"
+    )
 
     if num_past_covariates + num_future_covariates > 0:
         assert len(past_covariate_data) == num_series
@@ -658,15 +738,21 @@ def convert_fev_window_to_list_of_dicts_input(
         target_row = cast(dict, target_row)
         # this assumes that the targets have the same length for multivariate tasks
         target_tensor_i = np.stack([target_row[col] for col in target_columns])
-        entry: dict[str, np.ndarray | dict[str, np.ndarray]] = {"target": target_tensor_i}
+        entry: dict[str, np.ndarray | dict[str, np.ndarray]] = {
+            "target": target_tensor_i
+        }
 
         if len(dynamic_columns) > 0:
             past_covariate_row = past_covariate_data[idx]
-            entry["past_covariates"] = {col: past_covariate_row[col] for col in dynamic_columns}
+            entry["past_covariates"] = {
+                col: past_covariate_row[col] for col in dynamic_columns
+            }
 
         if len(known_dynamic_columns) > 0:
             future_known_row = future_known_data[idx]
-            entry["future_covariates"] = {col: future_known_row[col] for col in known_dynamic_columns}
+            entry["future_covariates"] = {
+                col: future_known_row[col] for col in known_dynamic_columns
+            }
 
         inputs.append(entry)
 
@@ -717,7 +803,9 @@ class Chronos2Dataset(IterableDataset):
 
     def __init__(
         self,
-        inputs: Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]],
+        inputs: Sequence[
+            Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]
+        ],
         context_length: int,
         prediction_length: int,
         batch_size: int,
@@ -726,9 +814,15 @@ class Chronos2Dataset(IterableDataset):
         mode: str | DatasetMode = DatasetMode.TRAIN,
     ) -> None:
         super().__init__()
-        assert mode in {DatasetMode.TRAIN, DatasetMode.VALIDATION, DatasetMode.TEST}, f"Invalid mode: {mode}"
+        assert mode in {
+            DatasetMode.TRAIN,
+            DatasetMode.VALIDATION,
+            DatasetMode.TEST,
+        }, f"Invalid mode: {mode}"
 
-        self.tasks = Chronos2Dataset._prepare_tasks(inputs, prediction_length, min_past, mode)
+        self.tasks = Chronos2Dataset._prepare_tasks(
+            inputs, prediction_length, min_past, mode
+        )
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.batch_size = batch_size
@@ -738,7 +832,9 @@ class Chronos2Dataset(IterableDataset):
 
     @staticmethod
     def _prepare_tasks(
-        inputs: Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]],
+        inputs: Sequence[
+            Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]
+        ],
         prediction_length: int,
         min_past: int,
         mode: str | DatasetMode,
@@ -747,20 +843,34 @@ class Chronos2Dataset(IterableDataset):
         for idx, raw_task in enumerate(inputs):
             if mode != DatasetMode.TEST:
                 raw_future_covariates = raw_task.get("future_covariates", {})
-                raw_future_covariates = cast(dict[str, TensorOrArray | None], raw_future_covariates)
+                raw_future_covariates = cast(
+                    dict[str, TensorOrArray | None], raw_future_covariates
+                )
                 if raw_future_covariates:
                     fixed_future_covariates = {}
                     for key, value in raw_future_covariates.items():
                         fixed_future_covariates[key] = (
-                            np.full(prediction_length, np.nan) if value is None or len(value) == 0 else value
+                            np.full(prediction_length, np.nan)
+                            if value is None or len(value) == 0
+                            else value
                         )
-                    raw_task = {**raw_task, "future_covariates": fixed_future_covariates}
+                    raw_task = {
+                        **raw_task,
+                        "future_covariates": fixed_future_covariates,
+                    }
 
-            raw_task = cast(dict[str, TensorOrArray | Mapping[str, TensorOrArray]], raw_task)
+            raw_task = cast(
+                dict[str, TensorOrArray | Mapping[str, TensorOrArray]], raw_task
+            )
             # convert to a format compatible with model's forward
-            task = validate_and_prepare_single_dict_task(raw_task, idx, prediction_length)
+            task = validate_and_prepare_single_dict_task(
+                raw_task, idx, prediction_length
+            )
 
-            if mode != DatasetMode.TEST and task[0].shape[-1] < min_past + prediction_length:
+            if (
+                mode != DatasetMode.TEST
+                and task[0].shape[-1] < min_past + prediction_length
+            ):
                 # filter tasks based on min_past + prediction_length
                 continue
             tasks.append(task)
@@ -772,7 +882,9 @@ class Chronos2Dataset(IterableDataset):
             )
         return tasks
 
-    def _construct_slice(self, task_idx: int) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor, int]:
+    def _construct_slice(
+        self, task_idx: int
+    ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor, int]:
         (
             task_past_tensor,  # shape:  (task_n_targets + task_n_covariates, history_length)
             task_future_tensor,
@@ -786,20 +898,24 @@ class Chronos2Dataset(IterableDataset):
 
         if self.mode == DatasetMode.TRAIN:
             # slice a random subsequence from the full series
-            slice_idx = np.random.randint(self.min_past, full_length - self.prediction_length + 1)
-            
+            slice_idx = np.random.randint(
+                self.min_past, full_length - self.prediction_length + 1
+            )
+
         elif self.mode == DatasetMode.VALIDATION:
             # slice the last window for validation
             slice_idx = full_length - self.prediction_length
-            
+
         else:
             # slice the full series for prediction
             slice_idx = full_length
 
         if slice_idx >= self.context_length:
             # slice series, if it is longer than context_length
-            task_context = task_past_tensor[:, slice_idx - self.context_length : slice_idx]
-            
+            task_context = task_past_tensor[
+                :, slice_idx - self.context_length : slice_idx
+            ]
+
         else:
             task_context = task_past_tensor[:, :slice_idx]
 
@@ -808,12 +924,15 @@ class Chronos2Dataset(IterableDataset):
         # the task_context_tensor by slicing the appropriate indices which we do below
         if self.mode in [DatasetMode.TRAIN, DatasetMode.VALIDATION]:
             # the first task_n_targets elements in task_context_tensor are the targets
-            task_future_target = task_past_tensor[:, slice_idx : slice_idx + self.prediction_length]
+            task_future_target = task_past_tensor[
+                :, slice_idx : slice_idx + self.prediction_length
+            ]
 
             if task_n_future_covariates > 0:
                 # the last task_n_future_covariates elements in task_context_tensor are the known covariates
                 task_future_covariates = task_past_tensor[
-                    -task_n_future_covariates:, slice_idx : slice_idx + self.prediction_length
+                    -task_n_future_covariates:,
+                    slice_idx : slice_idx + self.prediction_length,
                 ]
             else:
                 # zero-length tensor for easy concatenation later
@@ -825,7 +944,9 @@ class Chronos2Dataset(IterableDataset):
                 (task_n_targets + task_n_past_only_covariates, self.prediction_length),
                 fill_value=torch.nan,
             )
-            task_future_covariates = torch.cat([task_future_covariates_padding, task_future_covariates], dim=0)
+            task_future_covariates = torch.cat(
+                [task_future_covariates_padding, task_future_covariates], dim=0
+            )
         else:
             task_future_target = None
             task_future_covariates = task_future_tensor
@@ -838,7 +959,9 @@ class Chronos2Dataset(IterableDataset):
 
         return task_context, task_future_target, task_future_covariates, task_n_targets
 
-    def _build_batch(self, task_indices: list[int]) -> dict[str, torch.Tensor | int | list[tuple[int, int]] | None]:
+    def _build_batch(
+        self, task_indices: list[int]
+    ) -> dict[str, torch.Tensor | int | list[tuple[int, int]] | None]:
         """Build a batch from given task indices."""
         batch_context_tensor_list = []
         batch_future_target_tensor_list = []
@@ -848,7 +971,9 @@ class Chronos2Dataset(IterableDataset):
 
         target_start_idx = 0
         for group_id, task_idx in enumerate(task_indices):
-            task_context, task_future_target, task_future_covariates, task_n_targets = self._construct_slice(task_idx)
+            task_context, task_future_target, task_future_covariates, task_n_targets = (
+                self._construct_slice(task_idx)
+            )
 
             group_size = task_context.shape[0]
             task_group_ids = torch.full((group_size,), fill_value=group_id)
@@ -856,14 +981,20 @@ class Chronos2Dataset(IterableDataset):
             batch_future_target_tensor_list.append(task_future_target)
             batch_future_covariates_tensor_list.append(task_future_covariates)
             batch_group_ids_list.append(task_group_ids)
-            target_idx_ranges.append((target_start_idx, target_start_idx + task_n_targets))
+            target_idx_ranges.append(
+                (target_start_idx, target_start_idx + task_n_targets)
+            )
             target_start_idx += group_size
 
         return {
             "context": left_pad_and_cat_2D(batch_context_tensor_list),
-            "future_target": None
-            if self.mode == DatasetMode.TEST
-            else torch.cat(cast(list[torch.Tensor], batch_future_target_tensor_list), dim=0),
+            "future_target": (
+                None
+                if self.mode == DatasetMode.TEST
+                else torch.cat(
+                    cast(list[torch.Tensor], batch_future_target_tensor_list), dim=0
+                )
+            ),
             "future_covariates": torch.cat(batch_future_covariates_tensor_list, dim=0),
             "group_ids": torch.cat(batch_group_ids_list, dim=0),
             "num_output_patches": self.num_output_patches,
@@ -924,9 +1055,11 @@ class Chronos2Dataset(IterableDataset):
     @classmethod
     def convert_inputs(
         cls,
-        inputs: TensorOrArray
-        | Sequence[TensorOrArray]
-        | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]],
+        inputs: (
+            TensorOrArray
+            | Sequence[TensorOrArray]
+            | Sequence[Mapping[str, TensorOrArray | Mapping[str, TensorOrArray | None]]]
+        ),
         context_length: int,
         prediction_length: int,
         batch_size: int,
@@ -937,7 +1070,9 @@ class Chronos2Dataset(IterableDataset):
         """Convert from different input formats to a Chronos2Dataset."""
         if isinstance(inputs, (torch.Tensor, np.ndarray)):
             inputs = convert_tensor_input_to_list_of_dicts_input(inputs)
-        elif isinstance(inputs, list) and all([isinstance(x, (torch.Tensor, np.ndarray)) for x in inputs]):
+        elif isinstance(inputs, list) and all(
+            [isinstance(x, (torch.Tensor, np.ndarray)) for x in inputs]
+        ):
             inputs = cast(list[TensorOrArray], inputs)
             inputs = convert_list_of_tensors_input_to_list_of_dicts_input(inputs)
         elif isinstance(inputs, list) and all([isinstance(x, dict) for x in inputs]):
