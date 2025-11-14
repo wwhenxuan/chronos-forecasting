@@ -283,6 +283,7 @@ class Chronos2Model(PreTrainedModel):
         self.quantiles: torch.Tensor
         self.register_buffer("quantiles", quantiles, persistent=False)
 
+        # TODO: 这里定义模型的输出层
         self.output_patch_embedding = ResidualBlock(
             in_dim=config.d_model,
             h_dim=config.d_ff,
@@ -818,9 +819,9 @@ class Chronos2Model(PreTrainedModel):
         forecast_embeds = hidden_states[
             :, -num_output_patches:
         ]  # 获取编码器架构的最后一共patch的输出结果
-        quantile_preds: torch.Tensor = self.output_patch_embedding(forecast_embeds)
+        quantile_preds: torch.Tensor = self.output_patch_embedding(forecast_embeds)  # [batch_sized, num_patches, num_quantiles * patch_size]
 
-        # reshape quantile_preds to (batch, num_output_patches, num_quantiles, output_patch_size)
+        # reshape quantile_preds to (batch, num_output_patches, num_quantiles * output_patch_size)
         # TODO: 为什么要这样子做reshape？
         quantile_preds = rearrange(
             quantile_preds,
@@ -828,7 +829,7 @@ class Chronos2Model(PreTrainedModel):
             n=num_output_patches,
             q=self.num_quantiles,
             p=self.chronos_config.output_patch_size,
-        )
+        )  # [batch_size, num_quantiles, num_patches * patch_size]
 
         loss = (
             self._compute_loss(
@@ -845,6 +846,8 @@ class Chronos2Model(PreTrainedModel):
 
         # FIXME: 注意应该是在这一部分内容中进行置信预测
         # Unscale predictions
+        # TODO: 这里似乎是少了一个维度，将输出的Patch数目和Patch Size给合并了
+        # 这里应该是时间序列进行了的展平
         quantile_preds = rearrange(
             quantile_preds,
             "b q h -> b (q h)",
@@ -852,7 +855,12 @@ class Chronos2Model(PreTrainedModel):
             q=self.num_quantiles,
             h=num_output_patches * self.chronos_config.output_patch_size,
         )
+        
+        # 可逆归一化
+        # TODO: 这里为什么要带着置信区间一起进行可逆归一化？
         quantile_preds = self.instance_norm.inverse(quantile_preds, loc_scale)
+        
+        
         quantile_preds = rearrange(
             quantile_preds,
             "b (q h) -> b q h",
