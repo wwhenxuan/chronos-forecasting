@@ -278,6 +278,7 @@ class Chronos2Model(PreTrainedModel):
         encoder_config.is_decoder = False
         self.encoder = Chronos2Encoder(encoder_config)
 
+        # 这一部分内容可以学着写一下
         self.num_quantiles = len(self.chronos_config.quantiles)
         quantiles = torch.tensor(self.chronos_config.quantiles, dtype=self.dtype)
         self.quantiles: torch.Tensor
@@ -286,10 +287,13 @@ class Chronos2Model(PreTrainedModel):
         self.output_patch_embedding = ResidualBlock(
             in_dim=config.d_model,
             h_dim=config.d_ff,
+            # FIXME: 这个模块输出的形状就是分位数乘以输出patch_len
             out_dim=self.num_quantiles * self.chronos_config.output_patch_size,
             act_fn_name=config.dense_act_fn,
             dropout_p=config.dropout_rate,
         )
+        # TODO: 对于我们来说，需要需要使用一个简单的线性层进行Masked Time Series Modeling
+        # 然后需要使用一个ResidualBlock进行时间序列中最后一个Token的置信预测
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -612,6 +616,7 @@ class Chronos2Model(PreTrainedModel):
         num_output_patches: int,
     ) -> torch.Tensor:
         """在这里计算致信预测的损失"""
+        
         batch_size = future_target.shape[0]
         output_patch_size = self.chronos_config.output_patch_size
         assert (
@@ -813,7 +818,8 @@ class Chronos2Model(PreTrainedModel):
             num_context_patches + 1 + num_output_patches,
             self.model_dim,
         )
-
+        
+        # TODO: Chronos是只使用了最后一层的输出吗？
         # slice the last num_output_patches hidden states to be input into the output_patch_embedding
         forecast_embeds = hidden_states[
             :, -num_output_patches:
