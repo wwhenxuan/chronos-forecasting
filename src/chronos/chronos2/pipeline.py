@@ -285,8 +285,10 @@ class Chronos2Pipeline(BaseChronosPipeline):
             matmul_tf32 = torch.backends.cuda.matmul.allow_tf32
             cudnn_tf32 = torch.backends.cudnn.allow_tf32
 
+        # 创建训练的参数配置
         training_args = TrainingArguments(**training_kwargs)
 
+        # 创建 Chronos2Trainer 实例并进行训练
         trainer = Chronos2Trainer(
             model=model,
             args=training_args,
@@ -675,6 +677,7 @@ class Chronos2Pipeline(BaseChronosPipeline):
             dtype=torch.float32, device="cpu"
         )
 
+        # 这里为什么返回了一个列表
         return [batch_prediction[start:end] for (start, end) in target_idx_ranges]
 
     def _predict_step(

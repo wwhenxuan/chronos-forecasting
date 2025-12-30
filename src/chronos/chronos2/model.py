@@ -442,6 +442,8 @@ class Chronos2Model(PreTrainedModel):
     def _prepare_patched_context(
         self, context: torch.Tensor, context_mask: torch.Tensor | None = None
     ) -> tuple[torch.Tensor, torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+
+        # TODO: 为什么要创建掩码？
         context_mask = (
             context_mask.to(context.dtype)
             if context_mask is not None
@@ -449,7 +451,9 @@ class Chronos2Model(PreTrainedModel):
         )
 
         batch_size, context_length = context.shape
+
         # truncate context if it's longer than model's context length
+        # 输入时间序列的长度超出了模型的最长上下文长度
         if context_length > self.chronos_config.context_length:
             context = context[..., -self.chronos_config.context_length :]
             context_mask = context_mask[..., -self.chronos_config.context_length :]
@@ -462,7 +466,9 @@ class Chronos2Model(PreTrainedModel):
         context_mask = context_mask.to(self.dtype)
 
         # patching
-        patched_context = self.patch(context)
+        patched_context = self.patch(context)  # 对输入时间序列进行patching操作
+
+        # 对缺失值进行零填充
         patched_mask = torch.nan_to_num(self.patch(context_mask), nan=0.0)
         patched_context = torch.where(patched_mask > 0.0, patched_context, 0.0)
 
@@ -609,7 +615,7 @@ class Chronos2Model(PreTrainedModel):
 
     def _compute_loss(
         self,
-        quantile_preds: torch.Tensor,
+        quantile_preds: torch.Tensor,  # [batch_size, num_quantiles, pred_length]
         future_target: torch.Tensor,
         future_target_mask: torch.Tensor | None,
         patched_future_covariates_mask: torch.Tensor,
@@ -617,7 +623,7 @@ class Chronos2Model(PreTrainedModel):
         num_output_patches: int,
     ) -> torch.Tensor:
         """在这里计算致信预测的损失"""
-        
+
         batch_size = future_target.shape[0]
         output_patch_size = self.chronos_config.output_patch_size
         assert (
@@ -629,6 +635,7 @@ class Chronos2Model(PreTrainedModel):
         future_target, _ = self.instance_norm(future_target, loc_scale)
         future_target = future_target.unsqueeze(1)
         future_target = future_target.to(self.device)
+
         future_target_mask = (
             future_target_mask.unsqueeze(1).to(self.device)
             if future_target_mask is not None
@@ -650,6 +657,8 @@ class Chronos2Model(PreTrainedModel):
                 dim=-1,
             )
 
+        # 这里为什么要这样处理损失
+        # TODO: 这里是处理手动设置的分位数
         quantiles = rearrange(self.quantiles, "num_quantiles -> 1 num_quantiles 1")
         quantile_loss = 2 * torch.abs(
             (future_target - quantile_preds)
@@ -665,6 +674,7 @@ class Chronos2Model(PreTrainedModel):
         # the first components masks any missing targets and the second component masks known future values
         loss_mask = future_target_mask.float() * inv_future_covariate_mask
         loss = quantile_loss * loss_mask
+
         # mean over prediction horizon, sum over quantile levels and mean over batch
         loss = loss.mean(dim=-1).sum(dim=-1).mean()
 
@@ -761,6 +771,8 @@ class Chronos2Model(PreTrainedModel):
         )
 
         batch_size = context.shape[0]
+
+        # 获取填充之后的时间序列上下文
         patched_context, attention_mask, loc_scale = self._prepare_patched_context(
             context=context, context_mask=context_mask
         )
@@ -768,6 +780,7 @@ class Chronos2Model(PreTrainedModel):
 
         # get input embeddings of shape (batch, num_context_patches, d_model)
         input_embeds: torch.Tensor = self.input_patch_embedding(patched_context)
+
         # append [REG] special token embedding, if needed
         if self.chronos_config.use_reg_token:
             reg_input_ids = torch.full(
@@ -819,13 +832,15 @@ class Chronos2Model(PreTrainedModel):
             num_context_patches + 1 + num_output_patches,
             self.model_dim,
         )
-        
+
         # TODO: Chronos是只使用了最后一层的输出吗？
         # slice the last num_output_patches hidden states to be input into the output_patch_embedding
         forecast_embeds = hidden_states[
             :, -num_output_patches:
         ]  # 获取编码器架构的最后一共patch的输出结果
-        quantile_preds: torch.Tensor = self.output_patch_embedding(forecast_embeds)  # [batch_sized, num_patches, num_quantiles * patch_size]
+        quantile_preds: torch.Tensor = self.output_patch_embedding(
+            forecast_embeds
+        )  # [batch_sized, num_patches, num_quantiles * patch_size]
 
         # reshape quantile_preds to (batch, num_output_patches, num_quantiles * output_patch_size)
         # TODO: 为什么要这样子做reshape？
@@ -860,13 +875,13 @@ class Chronos2Model(PreTrainedModel):
             b=batch_size,
             q=self.num_quantiles,
             h=num_output_patches * self.chronos_config.output_patch_size,
-        )
-        
+        )  # [batch_size, num_quantiles * pred_length]
+
         # 可逆归一化
         # TODO: 这里为什么要带着置信区间一起进行可逆归一化？
         quantile_preds = self.instance_norm.inverse(quantile_preds, loc_scale)
-        
-        
+
+        # 标准化之后再变回来
         quantile_preds = rearrange(
             quantile_preds,
             "b (q h) -> b q h",
